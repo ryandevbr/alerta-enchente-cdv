@@ -1,0 +1,119 @@
+name: Atualizador de Dados CDV
+
+on:
+  # CRON DESLIGADO — rodar apenas manualmente durante desenvolvimento
+  # Para reativar quando o repositório virar público, descomente os blocos abaixo:
+  #
+  # schedule:
+  #   - cron: '0,30 * * * *'      # ANA a cada 30 min
+  #   - cron: '0,15,30,45 * * * *' # CEMIG a cada 15 min
+  #   - cron: '5,35 * * * *'       # Cache a cada 30 min, 5 min após ANA
+  #
+  workflow_dispatch:
+    inputs:
+      pular_ana:
+        description: 'Pular coleta da ANA'
+        type: boolean
+        default: false
+      pular_cemig:
+        description: 'Pular coleta da CEMIG'
+        type: boolean
+        default: false
+      pular_cache:
+        description: 'Pular recálculo de cache'
+        type: boolean
+        default: false
+
+jobs:
+  atualizar-ana:
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.pular_ana }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Rodar atualizador ANA
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          ANA_USER: ${{ secrets.ANA_USER }}
+          ANA_PASS: ${{ secrets.ANA_PASS }}
+        run: python atualizador_tempo_real.py
+
+  coletar-cemig:
+    runs-on: ubuntu-latest
+    if: ${{ !inputs.pular_cemig }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependências
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+      - name: Rodar coletor CEMIG
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python coletor_cemig.py
+
+  atualizar-cache:
+    # CORREÇÃO PRINCIPAL: só roda depois das duas anteriores terminarem
+    needs: [atualizar-ana, coletar-cemig]
+    # Permite pular se o usuário marcar a opção mesmo com as dependências ok
+    if: ${{ !cancelled() && !inputs.pular_cache }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Rodar atualizador de cache
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python atualizador_cache_site.py
+
+  enviar-alertas:
+    needs: [atualizar-ana, coletar-cemig]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Rodar alertas
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python alertas_qualitativos.py
+
+  monitor-saude:
+    needs: [atualizar-ana, coletar-cemig, atualizar-cache, enviar-alertas]
+    runs-on: ubuntu-latest
+    if: ${{ !cancelled() }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependências
+        run: pip install -r requirements.txt
+      - name: Rodar monitor de saúde
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python monitor_saude.py

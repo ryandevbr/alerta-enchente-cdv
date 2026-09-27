@@ -1,0 +1,37 @@
+# Ambiente Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Cache de dados
+cache_series/
+output/
+*.pkl
+*.parquet
+
+# Logs
+*.log
+
+# Documentação pesada
+docs/estudos/
+docs/ferramentas/
+PDF/
+HST/
+
+# Supabase
+supabase/.temp/
+supabase/functions/**/node_modules/
+
+# Configurações locais
+.env
+.env.local
+.env.*.local
+config_mapbox
+
+# Sistema
+.DS_Store
+Thumbs.db

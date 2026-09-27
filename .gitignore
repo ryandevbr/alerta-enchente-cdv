@@ -1,0 +1,34 @@
+# Ambiente
+venv/
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+*.log
+
+# Cache e outputs
+cache_series/
+*.pkl
+output/
+
+# IDE
+.vscode/
+
+# Supabase temp
+supabase/.temp/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Arquivos gerados pelo build
+index.html
+moderacao.html
+
+# Node
+node_modules/
+package-lock.json

@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moderação — Alerta Enchente CDV</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    body { background-color: #0f172a; }
+    .glass-panel {
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hidden-screen { display: none !important; }
+</style>
+</head>
+<body class="text-white font-sans min-h-screen">
+
+<!-- ============================================================ -->
+<!-- TELA 1 — LOGIN                                                -->
+<!-- ============================================================ -->
+<div id="tela-login" class="min-h-screen flex items-center justify-center p-4">
+    <div class="glass-panel rounded-2xl p-8 max-w-md w-full border-t border-l border-white/20 shadow-2xl">
+        <div class="text-center mb-6">
+            <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                <svg class="w-7 h-7 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+            </div>
+            <h1 class="text-xl font-bold text-white">Moderação — Chat CDV</h1>
+            <p class="text-xs text-gray-400 mt-1">Acesso restrito à Defesa Civil</p>
+        </div>
+
+        <div class="space-y-3">
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase tracking-wider">Email</label>
+                <input type="email" id="loginEmail" autocomplete="email"
+                       class="w-full mt-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase tracking-wider">Senha</label>
+                <input type="password" id="loginSenha" autocomplete="current-password"
+                       class="w-full mt-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500">
+            </div>
+        </div>
+
+        <p id="loginErro" class="text-red-400 text-xs mt-3 hidden-screen"></p>
+
+        <button id="loginBtn" onclick="fazerLogin()"
+                class="w-full mt-5 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-wait">
+            Entrar
+        </button>
+
+        <p class="text-[10px] text-gray-500 text-center mt-4">
+            Sessão válida por 7 dias. Use o mesmo email cadastrado no Supabase.
+        </p>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TELA 2 — DASHBOARD                                            -->
+<!-- ============================================================ -->
+<div id="tela-painel" class="hidden-screen min-h-screen">
+    <!-- Header -->
+    <header class="glass-panel border-b border-white/10 sticky top-0 z-20">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center">
+                    <span id="userInitial" class="text-blue-300 text-xs font-bold">?</span>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-white">Painel de Moderação</p>
+                    <p class="text-[10px] text-gray-400" id="userEmail">—</p>
+                </div>
+            </div>
+            <button onclick="fazerLogout()"
+                    class="text-gray-400 hover:text-red-400 text-xs px-3 py-1.5 rounded border border-white/10 hover:border-red-400/40 transition-colors">
+                Sair
+            </button>
+        </div>
+    </header>
+
+    <!-- Stats -->
+    <div class="max-w-6xl mx-auto px-4 pt-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Pendentes</p>
+                <p id="statPendentes" class="text-2xl font-light text-yellow-400 mt-1">0</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Reportadas</p>
+                <p id="statReportadas" class="text-2xl font-light text-red-400 mt-1">0</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Aprovadas hoje</p>
+                <p id="statAprovadas" class="text-2xl font-light text-green-400 mt-1">0</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Rejeitadas</p>
+                <p id="statRejeitadas" class="text-2xl font-light text-gray-400 mt-1">0</p>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-4 border-b border-white/10">
+            <button onclick="trocarFiltro('pendente')" id="tab-pendente"
+                    class="px-4 py-2 text-sm font-medium text-yellow-400 border-b-2 border-yellow-400 transition-colors">
+                Fila de Moderação
+            </button>
+            <button onclick="trocarFiltro('reportada')" id="tab-reportada"
+                    class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition-colors">
+                Reportadas
+            </button>
+            <button onclick="trocarFiltro('metricas')" id="tab-metricas"
+                    class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition-colors">
+                Métricas
+            </button>
+            <button onclick="trocarFiltro('rejeitada')" id="tab-rejeitada"
+                    class="px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition-colors">
+
+            <!-- Dica de atalhos (só aparece na aba Fila de Moderação) -->
+            <div id="dicaAtalhos" class="text-[11px] text-gray-400 mb-3 flex items-center gap-4 flex-wrap">
+                <span class="text-gray-500"> Atalhos:</span>
+                <span class="flex items-center gap-1.5">
+                    <kbd class="bg-slate-700 text-gray-200 px-1.5 py-0.5 rounded border border-white/10 font-mono text-[10px]">A</kbd>
+                    aprovar
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <kbd class="bg-slate-700 text-gray-200 px-1.5 py-0.5 rounded border border-white/10 font-mono text-[10px]">R</kbd>
+                    rejeitar
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <kbd class="bg-slate-700 text-gray-200 px-1.5 py-0.5 rounded border border-white/10 font-mono text-[10px]">S</kbd>
+                    pular
+                </span>
+                <span class="flex items-center gap-1.5 ml-auto">
+                    <kbd class="bg-slate-700 text-gray-200 px-1.5 py-0.5 rounded border border-white/10 font-mono text-[10px]">Shift</kbd>
+                    +
+                    <kbd class="bg-slate-700 text-gray-200 px-1.5 py-0.5 rounded border border-white/10 font-mono text-[10px]">?</kbd>
+                    ajuda
+                </span>
+            </div>
+                Histórico de Rejeições
+            </button>
+            <div class="ml-auto flex items-center gap-2 py-2">
+                <span id="connDot" class="flex h-2 w-2 relative">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span id="connTxt" class="text-[10px] text-green-400 font-medium">Tempo real</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PAINEL DE MÉTRICAS (oculto por padrão)                        -->
+    <!-- ============================================================ -->
+    <div id="painelMetricas" class="hidden-screen space-y-4">
+
+        <!-- Filtro de período -->
+        <div class="flex items-center gap-2 mb-2">
+            <span class="text-[10px] text-gray-400 uppercase tracking-wider">Período:</span>
+            <button onclick="carregarMetricas(7)"  id="btn-periodo-7"
+                    class="btn-periodo text-xs px-2.5 py-1 rounded border border-white/10 text-gray-400 hover:text-white transition-colors">
+                7 dias
+            </button>
+            <button onclick="carregarMetricas(30)" id="btn-periodo-30"
+                    class="btn-periodo text-xs px-2.5 py-1 rounded border border-white/10 text-gray-400 hover:text-white transition-colors">
+                30 dias
+            </button>
+            <button onclick="carregarMetricas(90)" id="btn-periodo-90"
+                    class="btn-periodo text-xs px-2.5 py-1 rounded border border-white/10 text-gray-400 hover:text-white transition-colors">
+                90 dias
+            </button>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Total</p>
+                <p id="kpiTotal" class="text-2xl font-light text-white mt-1">—</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">mensagens</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Aprovação</p>
+                <p id="kpiAprovacao" class="text-2xl font-light text-green-400 mt-1">—</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">do total</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Autores únicos</p>
+                <p id="kpiAutores" class="text-2xl font-light text-blue-400 mt-1">—</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">pessoas</p>
+            </div>
+            <div class="glass-panel rounded-xl p-4">
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Reportadas</p>
+                <p id="kpiReportadas" class="text-2xl font-light text-red-400 mt-1">—</p>
+                <p class="text-[10px] text-gray-500 mt-0.5">denúncias</p>
+            </div>
+        </div>
+
+        <!-- Gráfico 1: Mensagens por dia -->
+        <div class="glass-panel rounded-xl p-4">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-white">Mensagens por dia</h3>
+                <div class="flex gap-3 text-[10px]">
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500"></span> Aprovadas</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-500"></span> Pendentes</span>
+                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-500"></span> Rejeitadas</span>
+                </div>
+            </div>
+            <div class="relative h-52">
+                <canvas id="graficoPorDia"></canvas>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+            <!-- Gráfico 2: Distribuição por status -->
+            <div class="glass-panel rounded-xl p-4">
+                <h3 class="text-sm font-bold text-white mb-3">Distribuição por status</h3>
+                <div class="relative h-52 flex items-center justify-center">
+                    <canvas id="graficoStatus"></canvas>
+                </div>
+            </div>
+
+            <!-- Gráfico 3: Distribuição por hora do dia -->
+            <div class="glass-panel rounded-xl p-4">
+                <h3 class="text-sm font-bold text-white mb-3">Horários de pico</h3>
+                <div class="relative h-52">
+                    <canvas id="graficoPorHora"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Gráfico 4: Top ruas -->
+        <div class="glass-panel rounded-xl p-4">
+            <h3 class="text-sm font-bold text-white mb-3">Top ruas por mensagens</h3>
+            <div class="relative h-64">
+                <canvas id="graficoTopRuas"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Lista de mensagens -->
+    <main class="max-w-6xl mx-auto px-4 pb-12">
+        <div id="listaMensagens" class="space-y-3">
+            <div class="text-center text-gray-500 text-sm py-8">Carregando...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+
+// CONFIGURAÇÃO
+
+const SUPABASE_URL = 'URL_SUPABASE_AQUI';
+const SUPABASE_ANON_KEY = 'CHAVE_SUPABASE_AQUI';
+
+let sb = null;
+let canalRealtime = null;
+let filtroAtual = 'pendente';
+let cacheMensagens = [];
+
+
+// INICIALIZAÇÃO
+
+(async function init() {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true }
+    });
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+        await entrarNoPainel(session.user);
+    } else {
+        mostrarTela('login');
+    }
+
+    // Reage a login/logout em outras abas
+    sb.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+            mostrarTela('login');
+            desconectarRealtime();
+        } else if (event === 'SIGNED_IN' && session) {
+            entrarNoPainel(session.user);
+        }
+    });
+
+    // Enter nos campos de login
+    ['loginEmail', 'loginSenha'].forEach(id => {
+        document.getElementById(id).addEventListener('keypress', e => {
+            if (e.key === 'Enter') fazerLogin();
+        });
+    });
+})();
+
+function mostrarTela(qual) {
+    document.getElementById('tela-login').classList.toggle('hidden-screen', qual !== 'login');
+    document.getElementById('tela-painel').classList.toggle('hidden-screen', qual !== 'painel');
+}
+
+
+// LOGIN / LOGOUT
+
+async function fazerLogin() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const senha = document.getElementById('loginSenha').value;
+    const btn   = document.getElementById('loginBtn');
+    const erro  = document.getElementById('loginErro');
+
+    erro.classList.add('hidden-screen');
+
+    if (!email || !senha) {
+        erro.innerText = 'Preencha email e senha.';
+        erro.classList.remove('hidden-screen');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = 'Entrando...';
+
+    try {
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: senha });
+        if (error) throw error;
+
+        // Verifica se o usuário é admin
+        const { data: admin, error: errAdmin } = await sb
+            .from('chat_admins')
+            .select('user_id, nome')
+            .eq('user_id', data.user.id)
+            .maybeSingle();
+
+        if (errAdmin) throw errAdmin;
+
+        if (!admin) {
+            await sb.auth.signOut();
+            throw new Error('Você não tem permissão de moderação.');
+        }
+
+        document.getElementById('loginSenha').value = '';
+        await entrarNoPainel(data.user, admin.nome);
+    } catch (e) {
+        console.error(e);
+        erro.innerText = traduzErro(e.message);
+        erro.classList.remove('hidden-screen');
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Entrar';
+    }
+}
+
+function traduzErro(msg) {
+    if (!msg) return 'Erro desconhecido.';
+    if (msg.includes('Invalid login credentials')) return 'Email ou senha incorretos.';
+    if (msg.includes('Email not confirmed'))       return 'Email não confirmado.';
+    if (msg.includes('permissão'))                 return msg;
+    return msg;
+}
+
+async function fazerLogout() {
+    await sb.auth.signOut();
+    mostrarTela('login');
+    desconectarRealtime();
+}
+
+
+// ENTRADA NO PAINEL
+
+async function entrarNoPainel(user, nomeAdmin) {
+    mostrarTela('painel');
+
+    const inicial = (user.email || '?')[0].toUpperCase();
+    document.getElementById('userInitial').innerText = inicial;
+    document.getElementById('userEmail').innerText   = user.email;
+
+    await atualizarStats();
+    await carregarMensagens();
+    conectarRealtime();
+}
+
+
+// STATS
+
+async function atualizarStats() {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const hojeISO = hoje.toISOString();
+
+    const [pend, rep, aprov, rej] = await Promise.all([
+        sb.from('chat_mensagens').select('id', { count: 'exact', head: true })
+            .eq('status', 'pendente'),
+        sb.from('chat_mensagens').select('id', { count: 'exact', head: true })
+            .eq('reportado', true).neq('status', 'rejeitado'),
+        sb.from('chat_mensagens').select('id', { count: 'exact', head: true })
+            .eq('status', 'aprovado').gte('created_at', hojeISO),
+        sb.from('chat_mensagens').select('id', { count: 'exact', head: true })
+            .eq('status', 'rejeitado')
+    ]);
+
+    document.getElementById('statPendentes').innerText  = pend.count  ?? 0;
+    document.getElementById('statReportadas').innerText = rep.count   ?? 0;
+    document.getElementById('statAprovadas').innerText  = aprov.count ?? 0;
+    document.getElementById('statRejeitadas').innerText = rej.count   ?? 0;
+}
+
+
+// CARREGAR MENSAGENS
+
+function trocarFiltro(filtro) {
+    filtroAtual = filtro;
+    ['pendente', 'reportada', 'rejeitada', 'metricas'].forEach(f => {
+        const t = document.getElementById('tab-' + f);
+        if (!t) return;
+        if (f === filtro) {
+            t.className = `px-4 py-2 text-sm font-medium ${
+                f === 'pendente' ? 'text-yellow-400 border-yellow-400'
+                : f === 'reportada' ? 'text-red-400 border-red-400'
+                : f === 'metricas' ? 'text-blue-400 border-blue-400'
+                : 'text-gray-300 border-gray-400'
+            } border-b-2 transition-colors`;
+        } else {
+            t.className = 'px-4 py-2 text-sm font-medium text-gray-400 hover:text-gray-200 border-b-2 border-transparent transition-colors';
+        }
+    });
+
+        //  Painel de métricas vs lista
+        const painelMetricas = document.getElementById('painelMetricas');
+        const listaMensagens = document.getElementById('listaMensagens');
+
+        if (filtro === 'metricas') {
+            painelMetricas.classList.remove('hidden-screen');
+            listaMensagens.classList.add('hidden-screen');
+            // Esconde a barra de filtros de status (só faz sentido na lista)
+            document.querySelectorAll('.btn-periodo').forEach(() => {}); // no-op
+            carregarMetricas(_periodoMetricas);
+        } else {
+            painelMetricas.classList.add('hidden-screen');
+            listaMensagens.classList.remove('hidden-screen');
+        }
+
+    document.getElementById('dicaAtalhos').style.display = filtro === 'pendente' ? 'flex' : 'none';
+    carregarMensagens();
+}
+
+async function carregarMensagens() {
+    const container = document.getElementById('listaMensagens');
+    container.innerHTML = '<div class="text-center text-gray-500 text-sm py-8">Carregando...</div>';
+
+    let query = sb.from('chat_mensagens')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+    if (filtroAtual === 'pendente') {
+        query = query.eq('status', 'pendente');
+    } else if (filtroAtual === 'reportada') {
+        query = query.eq('reportado', true).neq('status', 'rejeitado');
+    } else if (filtroAtual === 'rejeitada') {
+        query = query.eq('status', 'rejeitado');
+    }
+
+    const { data, error } = await query;
+    if (error) {
+        console.error(error);
+        container.innerHTML = `<div class="text-center text-red-400 text-sm py-8">Erro ao carregar: ${escapeHtml(error.message)}</div>`;
+        return;
+    }
+
+    cacheMensagens = data || [];
+
+    if (cacheMensagens.length === 0) {
+        const vazio = filtroAtual === 'pendente'
+            ? 'Nenhuma mensagem na fila. Tudo em ordem! '
+            : filtroAtual === 'reportada'
+                ? 'Nenhuma mensagem reportada. '
+                : 'Nenhuma mensagem rejeitada ainda.';
+        container.innerHTML = `<div class="text-center text-gray-500 text-sm py-8">${vazio}</div>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    cacheMensagens.forEach(m => container.appendChild(renderCard(m)));
+}
+
+
+// CARD
+
+function renderCard(msg) {
+    const div = document.createElement('div');
+    div.className = 'glass-panel rounded-xl p-4 border-l-4';
+    div.style.borderLeftColor = msg.status === 'pendente' ? '#eab308'
+                              : msg.status === 'rejeitado' ? '#6b7280'
+                              : '#ef4444';
+
+    const data = new Date(msg.created_at).toLocaleString('pt-BR', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+    });
+
+    const badgeReport = msg.reportado_count > 0
+        ? `<span class="bg-red-500/20 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/40 ml-2">🚩 ${msg.reportado_count} denúncia${msg.reportado_count > 1 ? 's' : ''}</span>`
+        : '';
+
+    const badgeStatus = msg.status === 'pendente'
+        ? '<span class="bg-yellow-500/20 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded border border-yellow-500/40">PENDENTE</span>'
+        : msg.status === 'rejeitado'
+            ? '<span class="bg-gray-500/20 text-gray-400 text-[10px] font-bold px-2 py-0.5 rounded border border-gray-500/40">REJEITADA</span>'
+            : '<span class="bg-green-500/20 text-green-400 text-[10px] font-bold px-2 py-0.5 rounded border border-green-500/40">APROVADA</span>';
+
+    div.innerHTML = `
+        <div class="flex items-start justify-between gap-3 mb-2">
+            <div class="flex items-center flex-wrap gap-1 min-w-0">
+                ${badgeStatus}
+                ${badgeReport}
+            </div>
+            <span class="text-gray-500 text-[10px] flex-shrink-0">${data}</span>
+        </div>
+        <div class="mb-3">
+            <p class="text-sm text-blue-300 font-bold">
+                ${escapeHtml(msg.autor_nome || 'Anônimo')}
+                <span class="text-gray-500 font-normal">,</span>
+                <span class="text-gray-400 font-normal">${escapeHtml(msg.autor_rua || '—')}</span>
+            </p>
+            <p class="text-gray-200 text-sm mt-1 break-words whitespace-pre-wrap">${escapeHtml(msg.mensagem)}</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+            ${msg.status !== 'aprovado'
+                ? `<button onclick="moderar(${msg.id}, 'aprovado', this)"
+                           class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors">
+                       ✓ Aprovar
+                   </button>` : ''}
+            ${msg.status !== 'rejeitado'
+                ? `<button onclick="moderar(${msg.id}, 'rejeitado', this)"
+                           class="bg-red-600 hover:bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors">
+                       ✕ Rejeitar
+                   </button>` : ''}
+            ${msg.reportado && msg.status === 'aprovado'
+                ? `<button onclick="limparReport(${msg.id}, this)"
+                           class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold px-3 py-1.5 rounded transition-colors">
+                       Limpar denúncias
+                   </button>` : ''}
+        </div>
+    `;
+    return div;
+}
+
+
+// AÇÕES
+
+async function moderar(id, novoStatus, btn) {
+    // Rejeitar pede confirmação; aprovar é direto.
+    if (novoStatus === 'rejeitado') {
+        if (!confirm('Rejeitar esta mensagem? Ela deixará de aparecer no chat público.')) return;
+    }
+
+    btn.disabled = true;
+    const original = btn.innerText;
+    btn.innerText = '...';
+
+    const { error } = await sb
+        .from('chat_mensagens')
+        .update({ status: novoStatus })
+        .eq('id', id);
+
+    if (error) {
+        console.error(error);
+        alert('Erro ao atualizar: ' + error.message);
+        btn.disabled = false;
+        btn.innerText = original;
+        return;
+    }
+
+    // Feedback visual
+    mostrarToast(
+        novoStatus === 'aprovado' ? '✓ Mensagem aprovada' : '✕ Mensagem rejeitada',
+        novoStatus === 'aprovado' ? 'sucesso' : 'erro'
+    );
+
+    await atualizarStats();
+    await carregarMensagens();
+}
+
+async function limparReport(id, btn) {
+    btn.disabled = true;
+    const { error } = await sb
+        .from('chat_mensagens')
+        .update({ reportado: false, reportado_count: 0 })
+        .eq('id', id);
+
+    if (error) {
+        console.error(error);
+        alert('Erro: ' + error.message);
+        btn.disabled = false;
+        return;
+    }
+    await atualizarStats();
+    await carregarMensagens();
+}
+
+
+// REALTIME — novas pendentes e novos reports
+
+function conectarRealtime() {
+    if (canalRealtime) return;
+
+    canalRealtime = sb.channel('moderacao')
+        .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'chat_mensagens' },
+            () => { atualizarStats(); carregarMensagens(); }
+        )
+        .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'chat_mensagens' },
+            (payload) => {
+                // Se a mensagem saiu do filtro atual, remove do cache
+                const m = payload.new;
+                const saiuDoFiltro =
+                    (filtroAtual === 'pendente'  && m.status !== 'pendente') ||
+                    (filtroAtual === 'reportada' && (!m.reportado || m.status === 'rejeitado')) ||
+                    (filtroAtual === 'rejeitada' && m.status !== 'rejeitado');
+                if (saiuDoFiltro) {
+                    atualizarStats();
+                    carregarMensagens();
+                }
+            }
+        )
+        .subscribe((status) => {
+            const txt = document.getElementById('connTxt');
+            const dot = document.getElementById('connDot');
+            if (status === 'SUBSCRIBED') {
+                txt.innerText = 'Tempo real';
+                txt.className = 'text-[10px] text-green-400 font-medium';
+                dot.className = 'flex h-2 w-2 relative';
+            } else {
+                txt.innerText = 'Reconectando...';
+                txt.className = 'text-[10px] text-yellow-400 font-medium';
+            }
+        });
+}
+
+function desconectarRealtime() {
+    if (canalRealtime) {
+        sb.removeChannel(canalRealtime);
+        canalRealtime = null;
+    }
+}
+
+
+// UTIL
+
+function escapeHtml(s) {
+    return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+
+// DASHBOARD DE MÉTRICAS
+
+let _periodoMetricas = 30;
+let _charts = { porDia: null, status: null, porHora: null, topRuas: null };
+
+// Estado do filtro — precisamos saber quando a aba "metricas" está ativa
+// para não conflitar com o sistema existente de trocarFiltro().
+let _abaAtual = 'pendente';   // compatível com o que já existe
+
+async function carregarMetricas(dias = 30) {
+    _periodoMetricas = dias;
+
+    // Marca botão ativo
+    document.querySelectorAll('.btn-periodo').forEach(b => {
+        b.classList.remove('border-blue-500', 'text-blue-400', 'bg-blue-500/10');
+        b.classList.add('border-white/10', 'text-gray-400');
+    });
+    const btn = document.getElementById('btn-periodo-' + dias);
+    if (btn) {
+        btn.classList.add('border-blue-500', 'text-blue-400', 'bg-blue-500/10');
+        btn.classList.remove('border-white/10', 'text-gray-400');
+    }
+
+    // Placeholder de loading
+    document.getElementById('kpiTotal').innerText = '…';
+
+    try {
+        const headers = {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${await getAuthToken()}`
+        };
+
+        const [rKpis, rDia, rHora, rRuas] = await Promise.all([
+            fetch(`${SUPABASE_URL}/rest/v1/rpc/metricas_kpis`, {
+                method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias })
+            }),
+            fetch(`${SUPABASE_URL}/rest/v1/rpc/metricas_mensagens_por_dia`, {
+                method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias })
+            }),
+            fetch(`${SUPABASE_URL}/rest/v1/rpc/metricas_por_hora`, {
+                method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias })
+            }),
+            fetch(`${SUPABASE_URL}/rest/v1/rpc/metricas_top_ruas`, {
+                method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ dias, limite: 10 })
+            }),
+        ]);
+
+        const kpis    = await rKpis.json();
+        const porDia  = await rDia.json();
+        const porHora = await rHora.json();
+        const topRuas = await rRuas.json();
+
+        renderKPIs(kpis);
+        renderGraficoPorDia(porDia, dias);
+        renderGraficoStatus(kpis);
+        renderGraficoPorHora(porHora);
+        renderGraficoTopRuas(topRuas);
+
+    } catch (err) {
+        console.error('[Métricas] Erro:', err);
+        document.getElementById('kpiTotal').innerText = '—';
+    }
+}
+
+// Pega o token de autenticação do cliente Supabase já criado
+async function getAuthToken() {
+    if (typeof sb !== 'undefined' && sb?.auth) {
+        const { data } = await sb.auth.getSession();
+        return data?.session?.access_token || SUPABASE_ANON_KEY;
+    }
+    return SUPABASE_ANON_KEY;
+}
+
+function renderKPIs(k) {
+    if (!k) return;
+    document.getElementById('kpiTotal').innerText = k.total ?? '—';
+
+    const taxa = k.total > 0 ? Math.round((k.aprovadas / k.total) * 100) : 0;
+    document.getElementById('kpiAprovacao').innerText = `${taxa}%`;
+
+    document.getElementById('kpiAutores').innerText = k.autores_unicos ?? '—';
+    document.getElementById('kpiReportadas').innerText = k.reportadas ?? '—';
+}
+
+function renderGraficoPorDia(data, dias) {
+    const ctx = document.getElementById('graficoPorDia').getContext('2d');
+    if (_charts.porDia) _charts.porDia.destroy();
+
+    // Gera todas as datas do período (para não ter buracos nos dias sem msg)
+    const hoje = new Date();
+    const labels = [];
+    const mapDatas = {};
+    for (let i = dias - 1; i >= 0; i--) {
+        const d = new Date(hoje);
+        d.setDate(d.getDate() - i);
+        const iso = d.toISOString().slice(0, 10);
+        labels.push(iso);
+        mapDatas[iso] = { aprovado: 0, pendente: 0, rejeitado: 0 };
+    }
+
+    (data || []).forEach(r => {
+        const dia = r.dia.slice(0, 10);
+        if (mapDatas[dia]) {
+            mapDatas[dia][r.status] = Number(r.total);
+        }
+    });
+
+    const aprov = labels.map(d => mapDatas[d].aprovado);
+    const pend  = labels.map(d => mapDatas[d].pendente);
+    const rej   = labels.map(d => mapDatas[d].rejeitado);
+
+    // Rótulos curtos (dd/mm)
+    const labelsCurto = labels.map(d => {
+        const [, m, dd] = d.split('-');
+        return `${dd}/${m}`;
+    });
+
+    _charts.porDia = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labelsCurto,
+            datasets: [
+                { label: 'Aprovadas',  data: aprov, backgroundColor: 'rgba(16, 185, 129, 0.7)', stack: 's' },
+                { label: 'Pendentes',  data: pend,  backgroundColor: 'rgba(234, 179, 8, 0.7)',   stack: 's' },
+                { label: 'Rejeitadas', data: rej,   backgroundColor: 'rgba(239, 68, 68, 0.7)',   stack: 's' },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#94a3b8', bodyColor: '#fff',
+                    callbacks: {
+                        footer: (items) => {
+                            const total = items.reduce((s, i) => s + i.parsed.y, 0);
+                            return `Total: ${total}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { stacked: true, grid: { display: false }, ticks: { color: '#64748b', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 15 } },
+                y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 }, precision: 0 } }
+            }
+        }
+    });
+}
+
+function renderGraficoStatus(k) {
+    const ctx = document.getElementById('graficoStatus').getContext('2d');
+    if (_charts.status) _charts.status.destroy();
+
+    if (!k || !k.total) return;
+
+    _charts.status = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Aprovadas', 'Pendentes', 'Rejeitadas'],
+            datasets: [{
+                data: [k.aprovadas, k.pendentes, k.rejeitadas],
+                backgroundColor: [
+                    'rgba(16, 185, 129, 0.8)',
+                    'rgba(234, 179, 8, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                ],
+                borderColor: 'rgba(15, 23, 42, 0.9)',
+                borderWidth: 3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#94a3b8', font: { size: 11 }, padding: 10, boxWidth: 12 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#94a3b8', bodyColor: '#fff',
+                }
+            }
+        }
+    });
+}
+
+function renderGraficoPorHora(data) {
+    const ctx = document.getElementById('graficoPorHora').getContext('2d');
+    if (_charts.porHora) _charts.porHora.destroy();
+
+    // Monta array de 24 horas
+    const porHora = new Array(24).fill(0);
+    (data || []).forEach(r => { porHora[r.hora] = Number(r.total); });
+
+    const labels = porHora.map((_, h) => `${String(h).padStart(2, '0')}h`);
+
+    _charts.porHora = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                data: porHora,
+                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                borderRadius: 3,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#94a3b8', bodyColor: '#fff',
+                    callbacks: { title: (items) => `Hora: ${items[0].label}` }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 9 }, autoSkip: true, maxTicksLimit: 12 } },
+                y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 }, precision: 0 } }
+            }
+        }
+    });
+}
+
+function renderGraficoTopRuas(data) {
+    const ctx = document.getElementById('graficoTopRuas').getContext('2d');
+    if (_charts.topRuas) _charts.topRuas.destroy();
+
+    const ruas   = (data || []).map(r => r.rua);
+    const totais = (data || []).map(r => Number(r.total));
+
+    _charts.topRuas = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ruas,
+            datasets: [{
+                data: totais,
+                backgroundColor: 'rgba(168, 85, 247, 0.75)',
+                borderRadius: 4,
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    titleColor: '#94a3b8', bodyColor: '#fff',
+                }
+            },
+            scales: {
+                x: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b', font: { size: 10 }, precision: 0 } },
+                y: { grid: { display: false }, ticks: { color: '#94a3b8', font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+
+// ATALHOS DE TECLADO
+// A = aprovar · R = rejeitar · S = pular · Shift+? = ajuda
+
+
+// Mapeamento de ações
+const _atalhoAjuda = `
+ Atalhos disponíveis:
+
+A   → aprovar a primeira mensagem da fila
+R   → rejeitar a primeira mensagem da fila
+S   → pular para a próxima mensagem
+Esc → fecha diálogos
+?   → esta ajuda (Shift + /)
+
+Atalhos funcionam apenas na aba "Fila de Moderação".
+`;
+
+document.addEventListener('keydown', (e) => {
+    // Ignora se o foco está em input/textarea
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+
+    // Ignora se algum modificador estiver pressionado
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // Shift+? → ajuda
+    if (e.shiftKey && e.key === '?') {
+        e.preventDefault();
+        alert(_atalhoAjuda);
+        return;
+    }
+
+    // Demais atalhos só funcionam sem shift
+    if (e.shiftKey) return;
+
+    // Atalhos só funcionam na fila de moderação
+    if (filtroAtual !== 'pendente') {
+        if (['a', 'A', 'r', 'R', 's', 'S'].includes(e.key)) {
+            mostrarToast('Atalhos só funcionam na aba "Fila de Moderação"');
+        }
+        return;
+    }
+
+    if (!cacheMensagens || cacheMensagens.length === 0) {
+        if (['a', 'A', 'r', 'R'].includes(e.key)) {
+            mostrarToast('Nenhuma mensagem na fila');
+        }
+        return;
+    }
+
+    switch (e.key) {
+        case 'a':
+        case 'A':
+            e.preventDefault();
+            acionarPrimeiroCard('aprovado');
+            break;
+        case 'r':
+        case 'R':
+            e.preventDefault();
+            acionarPrimeiroCard('rejeitado');
+            break;
+        case 's':
+        case 'S':
+            e.preventDefault();
+            pularParaProximo();
+            break;
+    }
+});
+
+// Aciona o botão correspondente no primeiro card da lista
+function acionarPrimeiroCard(novoStatus) {
+    const primeiro = cacheMensagens[0];
+    if (!primeiro) return;
+
+    // Encontra o card pelo ID da mensagem (mais confiável que nth-child)
+    const card = document.querySelector(`#listaMensagens > div`);
+    if (!card) return;
+
+    const rotulo = novoStatus === 'aprovado' ? 'Aprovar' : 'Rejeitar';
+    const botoes = card.querySelectorAll('button');
+    for (const b of botoes) {
+        if (b.innerText.includes(rotulo) && !b.disabled) {
+            b.click();
+            return;
+        }
+    }
+}
+
+// Scroll suave para o próximo card (sem ação)
+function pularParaProximo() {
+    const cards = document.querySelectorAll('#listaMensagens > div');
+    if (cards.length < 2) {
+        mostrarToast('Só há uma mensagem na fila');
+        return;
+    }
+    cards[1].scrollIntoView({ behavior: 'smooth', block: 'start' });
+    mostrarToast('Pulado');
+}
+
+
+// TOAST — feedback visual leve
+
+function mostrarToast(msg, cor = 'info') {
+    const anterior = document.getElementById('toastAtalho');
+    if (anterior) anterior.remove();
+
+    const cores = {
+        info:    'bg-slate-700/90 border-white/20 text-gray-100',
+        sucesso: 'bg-green-900/90 border-green-500/40 text-green-200',
+        erro:    'bg-red-900/90   border-red-500/40   text-red-200',
+    };
+
+    const el = document.createElement('div');
+    el.id = 'toastAtalho';
+    el.className = `fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg border backdrop-blur-sm shadow-2xl text-sm font-medium ${cores[cor] || cores.info}`;
+    el.style.animation = 'fadeToast 2.5s ease-out forwards';
+    el.innerText = msg;
+    document.body.appendChild(el);
+
+    setTimeout(() => el.remove(), 2600);
+}
+
+// CSS da animação (injeta uma vez)
+if (!document.getElementById('toastStyle')) {
+    const style = document.createElement('style');
+    style.id = 'toastStyle';
+    style.textContent = `
+        @keyframes fadeToast {
+            0%   { opacity: 0; transform: translate(-50%, 12px); }
+            15%  { opacity: 1; transform: translate(-50%, 0); }
+            85%  { opacity: 1; transform: translate(-50%, 0); }
+            100% { opacity: 0; transform: translate(-50%, 8px); }
+        }
+    `;
+    document.head.appendChild(style);
+}
+</script>
+</body>
+</html>
