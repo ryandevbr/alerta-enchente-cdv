@@ -796,15 +796,7 @@
     </div>
 </div>
 
-        <!-- ========================================== -->
-        <!-- DISCLAIMER LEGAL (rodapé fixo)             -->
-        <!-- ========================================== -->
-        <div id="disclaimerRodape"
-            class="fixed bottom-[70px] left-0 right-0 z-30 px-3 py-1 text-center text-[9px] md:text-[10px] text-gray-500 leading-tight pointer-events-none">
-            Ferramenta de apoio à decisão. A evacuação é decisão exclusiva da
-            <strong class="text-gray-400">Defesa Civil</strong>.
-            Emergência: <strong class="text-gray-300">199</strong> ou <strong class="text-gray-300">193</strong>.
-        </div>
+
 
     <!-- ========================================== -->
     <!-- BARRA DE NAVEGAÇÃO INFERIOR (TABS)         -->
@@ -1033,6 +1025,7 @@
 
                 if (jsonSupabase && jsonSupabase.length > 0) {
                     const dadosReais = jsonSupabase[0].dados;
+                    console.log('[DEBUG] buscarNivelReal — dadosReais:', dadosReais);
                     nivelTimoteoAtual = dadosReais.nivel_atual;
 
                     const slider = document.getElementById('sliderTempo');
@@ -1227,6 +1220,7 @@ function mostrarDicaDetalhes() {
 // PAINEL CEMIG — atualiza versão desktop + resumo mobile
 // ==========================================
 function atualizarPainelCemig(dados) {
+    console.log('[DEBUG] atualizarPainelCemig chamada com:', dados);
     if (!dados) return;
     _cemigDados = dados;
 
@@ -1396,6 +1390,7 @@ function fecharDetalhes() {
 }
 
 function _renderizarModalCemig() {
+    console.log('[DEBUG] _renderizarModalCemig — _cemigDados =', _cemigDados);
     const d = _cemigDados;
     if (!d) return;
 
