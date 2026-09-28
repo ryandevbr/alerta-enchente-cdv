@@ -1,14 +1,12 @@
 name: Atualizador de Dados CDV
 
 on:
-  # CRON DESLIGADO — rodar apenas manualmente durante desenvolvimento
-  # Para reativar quando o repositório virar público, descomente os blocos abaixo:
-  #
+  # Cron a cada 15 minutos.
+  # Roda o pipeline completo: ANA -> CEMIG -> Cache -> Alertas -> Monitor.
+  # A ordem dos jobs é garantida pelos 'needs' de cada um.
   schedule:
-     - cron: '0,30 * * * *'      # ANA a cada 30 min
-     - cron: '0,15,30,45 * * * *' # CEMIG a cada 15 min
-     - cron: '5,35 * * * *'       # Cache a cada 30 min, 5 min após ANA
-  
+    - cron: '0,15,30,45 * * * *'
+
   workflow_dispatch:
     inputs:
       pular_ana:
@@ -24,16 +22,21 @@ on:
         type: boolean
         default: false
 
+# Evita execucoes sobrepostas (uma nova espera a anterior terminar)
+concurrency:
+  group: atualizador-cdv
+  cancel-in-progress: false
+
 jobs:
   atualizar-ana:
     runs-on: ubuntu-latest
-    if: ${{ !inputs.pular_ana }}
+    if: ${{ github.event_name == 'schedule' || !inputs.pular_ana }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install -r requirements.txt
       - name: Rodar atualizador ANA
         env:
@@ -45,13 +48,13 @@ jobs:
 
   coletar-cemig:
     runs-on: ubuntu-latest
-    if: ${{ !inputs.pular_cemig }}
+    if: ${{ github.event_name == 'schedule' || !inputs.pular_cemig }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: |
           pip install -r requirements.txt
           playwright install chromium
@@ -62,17 +65,15 @@ jobs:
         run: python coletor_cemig.py
 
   atualizar-cache:
-    # CORREÇÃO PRINCIPAL: só roda depois das duas anteriores terminarem
     needs: [atualizar-ana, coletar-cemig]
-    # Permite pular se o usuário marcar a opção mesmo com as dependências ok
-    if: ${{ !cancelled() && !inputs.pular_cache }}
+    if: ${{ !cancelled() && (github.event_name == 'schedule' || !inputs.pular_cache) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install -r requirements.txt
       - name: Rodar atualizador de cache
         env:
@@ -82,14 +83,14 @@ jobs:
 
   enviar-alertas:
     needs: [atualizar-ana, coletar-cemig]
-    runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install -r requirements.txt
       - name: Rodar alertas
         env:
@@ -101,16 +102,16 @@ jobs:
 
   monitor-saude:
     needs: [atualizar-ana, coletar-cemig, atualizar-cache, enviar-alertas]
-    runs-on: ubuntu-latest
     if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Instalar dependências
+      - name: Instalar dependencias
         run: pip install -r requirements.txt
-      - name: Rodar monitor de saúde
+      - name: Rodar monitor de saude
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
