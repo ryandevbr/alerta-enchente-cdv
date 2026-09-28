@@ -1011,6 +1011,11 @@
 
         let nivelTimoteoAtual = '--';
         let niveisNovaEra = {}; // Irá conter { 1: nível, 2: nível, ..., 9: nível }
+        // Variáveis de estado do CEMIG, sparkline e comparativo
+        let _cemigDados = null;
+        let _defluencia48hData = null;
+        let _comparativoData = null;
+        let _chartDetalhes = null;
 
         // 5.1 Busca do Nível Real (Timóteo AGORA)
         async function buscarNivelReal() {
@@ -1169,10 +1174,7 @@
 // ==========================================
 // DADOS E ESTADO
 // ==========================================
-let _cemigDados = null;          // dados do status_atual
-let _defluencia48hData = null;   // dados de defluencia_48h
-let _comparativoData = null;     // dados de comparativo_anual
-let _chartDetalhes = null;       // instância do Chart.js
+
 
 const FAIXAS_DEFLUENCIA = [
     { min: 550, cor: 'text-red-400',    borda: 'border-red-500/50',    label: '🔴 CRÍTICO',  resumo: 'CRÍTICO' },
