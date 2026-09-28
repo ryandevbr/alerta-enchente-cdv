@@ -5,7 +5,7 @@ Sistema de alerta antecipado de cheias do Rio Piracicaba em Cachoeira do Vale (T
 
 [![Licença: MIT](https://img.shields.io/badge/Licen%C3%A7a-MIT-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-em%20opera%C3%A7%C3%A3o-green.svg)]()
-[![Site](https://img.shields.io/badge/site-alertaenchetecdv.app-blue.svg)](https://alertaenchetecdv.app)
+[![Site](https://img.shields.io/badge/site-alertaenchentecdv.app-blue.svg)](https://alertaenchentecdv.app)
 
 ---
 
@@ -351,4 +351,4 @@ Fontes de dados:
 Para dúvidas, sugestões ou suporte à replicação:
 
 - Issues do GitHub: [abrir issue](https://github.com/ryandevbr/Alerta_Enchente_CDV/issues)
-- Site em produção: [alertaenchetecdv.app](https://alertaenchetecdv.app)
+- Site em produção: [alertaenchentecdv.app](https://alertaenchentecdv.app)

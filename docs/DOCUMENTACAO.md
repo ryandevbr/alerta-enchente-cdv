@@ -263,7 +263,7 @@ Joao Monlevade --------------------------------------+
 ### 6.1 Site publico (index_base.html)
 
 **Hospedagem:** Vercel
-**URL:** `https://alertaenchetecdv.app`
+**URL:** `https://alertaenchentecdv.app`
 **Tecnologias:** HTML, Tailwind CSS, JavaScript puro, Mapbox GL, Chart.js
 
 Abas:
@@ -897,7 +897,7 @@ MAPBOX_KEY=
 
 ### 17.4 Links uteis
 
-- Site em producao: https://alertaenchetecdv.app
+- Site em producao: https://alertaenchentecdv.app
 - Repositorio: https://github.com/ryandevbr/Alerta_Enchente_CDV
 - Supabase Dashboard: https://supabase.com/dashboard
 - Vercel Dashboard: https://vercel.com/dashboard
@@ -920,3 +920,4 @@ Nota sobre manutencao: este documento deve ser atualizado sempre que:
 - Um limiar ou parametro for alterado
 - A infraestrutura mudar (Supabase, Vercel, GitHub)
 - Uma nova integracao for implementada
+
