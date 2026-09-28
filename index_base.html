@@ -356,40 +356,38 @@
                         </div>
                     </div>
 
-                    <!-- ---------- Bloco 2: Sparkline 48h ---------- -->
-                    <div id="modalSparklineWrap" class="hidden-notification">
-                        <div class="flex items-center justify-between mb-2">
-                            <p class="text-[11px] font-bold tracking-wider text-orange-400 uppercase leading-none">
-                                Defluência · últimas 48h
-                            </p>
-                            <span id="modalSparkRange" class="text-[10px] text-gray-500 leading-none"></span>
-                        </div>
+                            <!-- ---------- Bloco 2: Defluencia 48h ---------- -->
+                            <div id="modalSparklineWrap" class="hidden-notification">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[11px] font-bold tracking-wider text-orange-400 uppercase leading-none">
+                                        Defluencia - ultimas 48h
+                                    </p>
+                                    <span id="modalSparkRange" class="text-[10px] text-gray-500 leading-none"></span>
+                                </div>
 
-                        <div class="grid grid-cols-3 gap-2 mb-3">
-                            <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
-                                <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Mínima</p>
-                                <p class="text-xs font-medium text-blue-300 leading-none">
-                                    <span id="modalSparkMin">—</span> <span class="text-[9px] text-gray-500">m³/s</span>
-                                </p>
-                            </div>
-                            <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
-                                <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Máxima</p>
-                                <p class="text-xs font-medium text-orange-300 leading-none">
-                                    <span id="modalSparkMax">—</span> <span class="text-[9px] text-gray-500">m³/s</span>
-                                </p>
-                            </div>
-                            <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
-                                <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Variação</p>
-                                <p id="modalSparkVar" class="text-xs font-medium leading-none text-gray-300">
-                                    —
-                                </p>
-                            </div>
-                        </div>
+                                <div class="grid grid-cols-3 gap-2 mb-3">
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Minima</p>
+                                        <p class="text-xs font-medium text-blue-300 leading-none">
+                                            <span id="modalSparkMin">-</span> <span class="text-[9px] text-gray-500">m3/s</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Maxima</p>
+                                        <p class="text-xs font-medium text-orange-300 leading-none">
+                                            <span id="modalSparkMax">-</span> <span class="text-[9px] text-gray-500">m3/s</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Variacao</p>
+                                        <p id="modalSparkVar" class="text-xs font-medium leading-none text-gray-300">-</p>
+                                    </div>
+                                </div>
 
-                        <div class="relative h-40 w-full bg-black/30 rounded-lg border border-white/10 p-2">
-                            <canvas id="graficoDetalhesDefluencia"></canvas>
-                        </div>
-                    </div>
+                                <div class="relative h-40 w-full bg-black/30 rounded-lg border border-white/10 p-2">
+                                    <canvas id="graficoDetalhesDefluencia"></canvas>
+                                </div>
+                            </div>
 
                     <!-- ---------- Bloco 3: Comparativo anual ---------- -->
                     <div id="modalComparativoWrap" class="hidden-notification">

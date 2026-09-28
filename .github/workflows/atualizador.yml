@@ -4,11 +4,11 @@ on:
   # CRON DESLIGADO — rodar apenas manualmente durante desenvolvimento
   # Para reativar quando o repositório virar público, descomente os blocos abaixo:
   #
-  # schedule:
-  #   - cron: '0,30 * * * *'      # ANA a cada 30 min
-  #   - cron: '0,15,30,45 * * * *' # CEMIG a cada 15 min
-  #   - cron: '5,35 * * * *'       # Cache a cada 30 min, 5 min após ANA
-  #
+  schedule:
+     - cron: '0,30 * * * *'      # ANA a cada 30 min
+     - cron: '0,15,30,45 * * * *' # CEMIG a cada 15 min
+     - cron: '5,35 * * * *'       # Cache a cada 30 min, 5 min após ANA
+  
   workflow_dispatch:
     inputs:
       pular_ana:
