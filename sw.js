@@ -1,7 +1,7 @@
-=================
+
 // Service Worker — Alerta Enchente CDV
 // Cache básico + Push Notifications
-=================
+
 
 const CACHE_NAME = 'alerta-cdv-v2';
 const ASSETS_TO_CACHE = ['/', '/index_base.html', '/logo.png', '/manifest.json'];
@@ -54,9 +54,9 @@ self.addEventListener('fetch', (event) => {
     );
 });
 
-=================
+
 // PUSH — recebe notificação enviada pelo backend
-=================
+
 self.addEventListener('push', (event) => {
     let data = { title: 'Alerta CDV', body: 'Nova atualização.', url: '/', tag: 'alerta-cdv', icon: '/logo.png', badge: '/logo.png' };
 
@@ -84,9 +84,9 @@ self.addEventListener('push', (event) => {
     );
 });
 
-=================
+
 // NOTIFICATION CLICK — abre o site quando o usuário toca
-=================
+
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
