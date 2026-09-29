@@ -1,9 +1,6 @@
 name: Atualizador de Dados CDV
 
 on:
-  # Cron a cada 15 minutos.
-  # Roda o pipeline completo: ANA -> CEMIG -> Cache -> Alertas -> Monitor.
-  # A ordem dos jobs é garantida pelos 'needs' de cada um.
   schedule:
     - cron: '0,15,30,45 * * * *'
 
@@ -22,7 +19,6 @@ on:
         type: boolean
         default: false
 
-# Evita execucoes sobrepostas (uma nova espera a anterior terminar)
 concurrency:
   group: atualizador-cdv
   cancel-in-progress: false
@@ -38,13 +34,29 @@ jobs:
           python-version: '3.11'
       - name: Instalar dependencias
         run: pip install -r requirements.txt
-      - name: Rodar atualizador ANA
+      - name: Rodar atualizador ANA (REST)
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           ANA_USER: ${{ secrets.ANA_USER }}
           ANA_PASS: ${{ secrets.ANA_PASS }}
         run: python atualizador_tempo_real.py
+
+  coletar-ana-xml:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'schedule' || !inputs.pular_ana }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+      - name: Rodar coletor XML da ANA
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python coletor_ana_xml.py
 
   coletar-cemig:
     runs-on: ubuntu-latest
@@ -65,7 +77,7 @@ jobs:
         run: python coletor_cemig.py
 
   atualizar-cache:
-    needs: [atualizar-ana, coletar-cemig]
+    needs: [atualizar-ana, coletar-ana-xml, coletar-cemig]
     if: ${{ !cancelled() && (github.event_name == 'schedule' || !inputs.pular_cache) }}
     runs-on: ubuntu-latest
     steps:
@@ -82,7 +94,7 @@ jobs:
         run: python atualizador_cache_site.py
 
   enviar-alertas:
-    needs: [atualizar-ana, coletar-cemig]
+    needs: [atualizar-ana, coletar-ana-xml, coletar-cemig]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
@@ -101,7 +113,7 @@ jobs:
         run: python alertas_qualitativos.py
 
   monitor-saude:
-    needs: [atualizar-ana, coletar-cemig, atualizar-cache, enviar-alertas]
+    needs: [atualizar-ana, coletar-ana-xml, coletar-cemig, atualizar-cache, enviar-alertas]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:

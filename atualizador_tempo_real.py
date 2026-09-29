@@ -270,6 +270,8 @@ def atualizar_estacao(estacao: str, token: str) -> tuple[int, str]:
                 "nivel_cm":   nivel,
                 "chuva_mm":   chuva,
                 "vazao_m3s":  vazao,
+                "fonte":      "rest_api",
+                "provisorio": False,
             })
 
         # Upsert em lotes
