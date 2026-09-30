@@ -164,23 +164,62 @@ def parse_xml(xml_bytes: bytes) -> list[dict]:
 
 def gravar_via_rpc(codigo: str, registros: list[dict]) -> int:
     """
-    Grava cada registro via RPC. Retorna quantos foram processados.
+    Grava todos os registros em uma única chamada RPC em lote.
+    Reduz de ~270 chamadas para 1.
     """
-    inseridos = 0
-    for r in registros:
-        try:
-            supabase.rpc("upsert_leitura_provisoria", {
-                "p_codigo_ana": codigo,
-                "p_data_hora":  r["data_hora"],
-                "p_nivel_cm":   r["nivel_cm"],
-                "p_chuva_mm":   r["chuva_mm"],
-                "p_vazao_m3s":  r["vazao_m3s"],
-            }).execute()
-            inseridos += 1
-        except Exception as e:
-            log.error(f"   Erro no RPC para {r['data_hora']}: {e}")
-    return inseridos
+    if not registros:
+        return 0
 
+    # Adiciona o código da estação em cada registro
+    payload = [
+        {
+            "codigo_ana": codigo,
+            "data_hora":  r["data_hora"],
+            "nivel_cm":   r["nivel_cm"],
+            "chuva_mm":   r["chuva_mm"],
+            "vazao_m3s":  r["vazao_m3s"],
+        }
+        for r in registros
+    ]
+
+    try:
+        resultado = supabase.rpc("upsert_lote_provisorio", {
+            "p_registros": payload,
+        }).execute()
+
+        if resultado.data and len(resultado.data) > 0:
+            return resultado.data[0].get("processados", 0)
+        return 0
+    except Exception as e:
+        log.error(f"   Erro no RPC em lote: {e}")
+        return 0
+
+def rest_esta_em_dia(codigo: str, limite_min: int = 45) -> bool:
+    """
+    Verifica se o REST já tem dados recentes.
+    Se a última leitura for menor que `limite_min`, considera em dia.
+    """
+    try:
+        r = (supabase.table("historico_ana")
+             .select("data_hora")
+             .eq("codigo_ana", codigo)
+             .eq("fonte", "rest_api")
+             .order("data_hora", desc=True)
+             .limit(1)
+             .execute())
+
+        if not r.data:
+            return False
+
+        ultima = datetime.fromisoformat(r.data[0]["data_hora"].replace("Z", "+00:00"))
+        idade_min = (datetime.now(timezone.utc) - ultima).total_seconds() / 60
+
+        log.info(f"   {codigo}: REST com {idade_min:.0f} min de idade")
+        return idade_min < limite_min
+
+    except Exception as e:
+        log.warning(f"   Erro ao verificar REST: {e}")
+        return False
 
 # MAIN
 
@@ -200,6 +239,13 @@ def main() -> int:
     for codigo, nome in ESTACOES:
         log.info(f"Estacao: {nome} ({codigo})")
 
+        # Se o REST já está em dia, o XML não tem nada a adicionar
+        if rest_esta_em_dia(codigo, limite_min=45):
+            log.info(f"   REST em dia. Pulando XML.")
+            continue
+
+        log.info(f"   REST atrasado. Coletando XML...")
+
         xml = buscar_xml(codigo, data_inicio, data_fim)
         if xml is None:
             log.warning(f"   Falha ao buscar XML")
@@ -211,7 +257,6 @@ def main() -> int:
         if not registros:
             continue
 
-        # Ordena por data_hora (mais antigo primeiro) para logar a faixa
         registros.sort(key=lambda x: x["data_hora"])
         log.info(f"   Faixa: {registros[0]['data_hora']} a {registros[-1]['data_hora']}")
 

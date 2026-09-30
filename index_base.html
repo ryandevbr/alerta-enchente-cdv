@@ -484,10 +484,12 @@
 
                             <!-- Linha 2: Cota + Defluência resumida + botão detalhes -->
                             <div class="flex items-stretch">
-                                <!-- Cota atual -->
-                                <div class="flex items-baseline gap-1 px-3 py-2 flex-1 min-w-0">
-                                    <span class="text-[9px] text-gray-500 uppercase tracking-wider leading-none">Cota</span>
-                                    <span class="text-base font-light text-white leading-none">
+                                <!-- Cota atual + horário -->
+                                <div class="flex flex-col justify-center px-3 py-2 flex-1 min-w-0">
+                                    <span class="text-[9px] text-blue-400 font-medium leading-none">
+                                        AGORA <span id="horaDisplayMobile"></span>
+                                    </span>
+                                    <span class="text-base font-light text-white leading-none mt-0.5">
                                         <span id="nivelDisplayMobile">80</span><span class="text-[10px] text-gray-500 ml-0.5">cm</span>
                                     </span>
                                 </div>
@@ -1081,6 +1083,19 @@
                     horaDisplay.innerText = `(+${horaSlider}h)`;
                 } else {
                     horaDisplay.innerText = "";
+                }
+            }
+
+            // Horas mobile
+            const horaDisplayMobile = document.getElementById('horaDisplayMobile');
+            if (horaDisplayMobile) {
+                if (horaSlider === 0 && dataLeitura) {
+                    const d = new Date(dataLeitura);
+                    horaDisplayMobile.innerText = `(${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`;
+                } else if (horaSlider > 0) {
+                    horaDisplayMobile.innerText = `(+${horaSlider}h)`;
+                } else {
+                    horaDisplayMobile.innerText = "";
                 }
             }
 
