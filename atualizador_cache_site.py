@@ -176,7 +176,61 @@ def obter_serie_montante(horas_atras: int) -> Optional[pd.DataFrame]:
 
     return df_hourly
 
+def gerar_historico_rio_7d(supabase, estacao="56696000", nome="MARIO DE CARVALHO"):
+    """
+    Gera a chave historico_rio_7d do cache_site.
+    7 dias de leituras da ANA, agregadas por hora (maximo).
+    Inclui dados provisorios (originados do coletor XML) para cobertura continua.
+    """
+    limite = datetime.now(timezone.utc) - timedelta(days=7)
 
+    resp = (
+        supabase.table("historico_ana")
+        .select("data_hora,nivel_cm")
+        .eq("codigo_ana", estacao)
+        .gte("data_hora", limite.isoformat())
+        .order("data_hora", desc=False)
+        .execute()
+    )
+
+    if not resp.data:
+        return None
+
+    # Agrega por hora (maximo)
+    buckets = {}
+    for row in resp.data:
+        dt = datetime.fromisoformat(row["data_hora"].replace("Z", "+00:00"))
+        chave = dt.replace(minute=0, second=0, microsecond=0)
+        nivel = float(row["nivel_cm"])
+        if chave not in buckets or nivel > buckets[chave]:
+            buckets[chave] = nivel
+
+    pontos = [
+        { "t": k.isoformat().replace("+00:00", "Z"), "v": round(v, 1) }
+        for k, v in sorted(buckets.items())
+    ]
+
+    if not pontos:
+        return None
+
+    valores = [p["v"] for p in pontos]
+    nivel_atual = valores[-1]
+
+    limite_24h = datetime.now(timezone.utc) - timedelta(hours=24)
+    pontos_24h = [p["v"] for p in pontos
+                  if datetime.fromisoformat(p["t"].replace("Z", "+00:00")) >= limite_24h]
+    tendencia = round(nivel_atual - pontos_24h[0], 1) if len(pontos_24h) >= 2 else None
+
+    return {
+        "estacao": estacao,
+        "nome": nome,
+        "gerado_em": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "pontos": pontos,
+        "min": round(min(valores), 1),
+        "max": round(max(valores), 1),
+        "tendencia_24h": tendencia,
+        "referencias": { "atencao": 450, "alerta": 540, "inundacao": 620 },
+    }
 
 # CONSTRUÇÃO DA ONDA DESFASADA
 
@@ -536,7 +590,7 @@ def main() -> int:
     log.info("Cache atualizado com sucesso")
     log.info("=" * 60)
 
-        # ---- 4. Defluência 48h (NOVO) ----
+    # ---- 4. Defluência 48h (NOVO) ----
     defluencia = construir_defluencia_48h()
     if defluencia:
         ok = gravar_cache("defluencia_48h", defluencia)
@@ -547,6 +601,19 @@ def main() -> int:
             log.warning("falha ao gravar defluencia_48h")
     else:
         log.warning("defluencia_48h não foi atualizada")
+
+    # ---- 5. Histórico do rio 7 dias (NOVO) ----
+    historico = gerar_historico_rio_7d(supabase)
+    if historico:
+        ok = gravar_cache("historico_rio_7d", historico)
+        if ok:
+            log.info(f"historico_rio_7d → {len(historico['pontos'])} pontos "
+                     f"({historico['min']}–{historico['max']} cm) | "
+                     f"tendência 24h: {historico['tendencia_24h']} cm")
+        else:
+            log.warning("falha ao gravar historico_rio_7d")
+    else:
+        log.warning("historico_rio_7d não foi atualizado")
 
     registrar_status(True)
     return 0

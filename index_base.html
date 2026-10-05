@@ -389,6 +389,43 @@
                                 </div>
                             </div>
 
+                            <!-- ---------- Bloco 2.5: Historico do rio (7 dias) ---------- -->
+                            <div id="modalHistoricoRioWrap" class="hidden-notification">
+                                <div class="flex items-center justify-between mb-2">
+                                    <p class="text-[11px] font-bold tracking-wider text-blue-400 uppercase leading-none">
+                                        Rio Piracicaba — ultimos 7 dias
+                                    </p>
+                                    <span id="modalHistoricoRioTendencia" class="text-[10px] leading-none"></span>
+                                </div>
+
+                                <div class="grid grid-cols-3 gap-2 mb-3">
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Minimo</p>
+                                        <p class="text-xs font-medium text-blue-300 leading-none">
+                                            <span id="modalHistoricoRioMin">-</span> <span class="text-[9px] text-gray-500">cm</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Maximo</p>
+                                        <p class="text-xs font-medium text-orange-300 leading-none">
+                                            <span id="modalHistoricoRioMax">-</span> <span class="text-[9px] text-gray-500">cm</span>
+                                        </p>
+                                    </div>
+                                    <div class="bg-black/40 p-2 rounded-lg border border-white/10 text-center">
+                                        <p class="text-[9px] text-gray-500 uppercase tracking-wider leading-none mb-1">Variacao 24h</p>
+                                        <p id="modalHistoricoRioVar" class="text-xs font-medium leading-none text-gray-300">-</p>
+                                    </div>
+                                </div>
+
+                                <div class="relative h-44 w-full bg-black/30 rounded-lg border border-white/10 p-2">
+                                    <canvas id="graficoHistoricoRio"></canvas>
+                                </div>
+
+                                <p class="text-[10px] text-gray-500 text-center mt-3 leading-relaxed">
+                                    Nivel maximo por hora, registrado na estacao de Timoteo (ANA 56696000).
+                                </p>
+                            </div>
+
                     <!-- ---------- Bloco 3: Comparativo anual ---------- -->
                     <div id="modalComparativoWrap" class="hidden-notification">
                         <div class="flex items-center justify-between mb-3">
@@ -1128,6 +1165,8 @@
         let _defluencia48hData = null;
         let _comparativoData = null;
         let _chartDetalhes = null;
+        let _historicoRioData = null;
+        let _chartHistoricoRio = null;
 
         // 5.1 Busca do Nível Real (Timóteo AGORA)
         async function buscarNivelReal() {
@@ -1495,6 +1534,21 @@ async function carregarDadosAuxiliares() {
             console.warn('[Comparativo] Erro:', e);
         }
     }
+    // Historico do rio 7d
+    if (!_historicoRioData) {
+        try {
+            const r = await fetch(
+                `${SUPABASE_URL}/rest/v1/cache_site?chave=eq.historico_rio_7d&select=dados`,
+                { headers }
+            );
+            const j = await r.json();
+            if (j && j.length && j[0].dados) {
+                _historicoRioData = j[0].dados;
+            }
+        } catch (e) {
+            console.warn('[Historico Rio] Erro:', e);
+        }
+    }
 }
 
 
@@ -1512,6 +1566,7 @@ async function abrirDetalhes() {
 
     _renderizarModalCemig();
     _renderizarModalSparkline();
+    _renderizarModalHistoricoRio();
     _renderizarModalComparativo();
 }
 
@@ -1610,6 +1665,174 @@ function _renderizarModalSparkline() {
                         displayColors: false,
                         callbacks: {
                             label: (context) => `${context.parsed.y.toFixed(1)} m³/s`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: '#64748b', font: { size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: {
+                            color: '#64748b',
+                            font: { size: 9 },
+                            maxRotation: 0,
+                            autoSkip: true,
+                            maxTicksLimit: 6
+                        }
+                    }
+                }
+            }
+        });
+    }, 50);
+}
+
+function _renderizarModalHistoricoRio() {
+    const wrap = document.getElementById('modalHistoricoRioWrap');
+    const d = _historicoRioData;
+
+    if (!d || !d.pontos || d.pontos.length < 2) {
+        wrap.classList.add('hidden-notification');
+        return;
+    }
+
+    wrap.classList.remove('hidden-notification');
+
+    // Cards
+    document.getElementById('modalHistoricoRioMin').innerText = d.min;
+    document.getElementById('modalHistoricoRioMax').innerText = d.max;
+
+    const varEl = document.getElementById('modalHistoricoRioVar');
+    if (d.tendencia_24h != null) {
+        const sinal = d.tendencia_24h >= 0 ? '+' : '';
+        varEl.innerText = `${sinal}${d.tendencia_24h} cm`;
+        varEl.className = `text-xs font-medium leading-none ${
+            d.tendencia_24h > 20  ? 'text-red-400'
+            : d.tendencia_24h > 5 ? 'text-orange-300'
+            : d.tendencia_24h < -20 ? 'text-blue-400'
+            : 'text-gray-300'
+        }`;
+    } else {
+        varEl.innerText = '—';
+        varEl.className = 'text-xs font-medium leading-none text-gray-500';
+    }
+
+    // Label de tendencia no cabecalho
+    const tendEl = document.getElementById('modalHistoricoRioTendencia');
+    if (d.tendencia_24h != null) {
+        if (d.tendencia_24h > 20)       tendEl.innerText = 'subindo rapido';
+        else if (d.tendencia_24h > 5)   tendEl.innerText = 'subindo';
+        else if (d.tendencia_24h < -20) tendEl.innerText = 'baixando rapido';
+        else if (d.tendencia_24h < -5)  tendEl.innerText = 'baixando';
+        else                            tendEl.innerText = 'estavel';
+        tendEl.className = `text-[10px] leading-none ${
+            d.tendencia_24h > 5  ? 'text-orange-300'
+            : d.tendencia_24h < -5 ? 'text-blue-300'
+            : 'text-gray-400'
+        }`;
+    } else {
+        tendEl.innerText = '';
+    }
+
+    // Grafico
+    setTimeout(() => {
+        const ctx = document.getElementById('graficoHistoricoRio').getContext('2d');
+        if (_chartHistoricoRio) _chartHistoricoRio.destroy();
+
+        const labels = d.pontos.map(p => {
+            const dt = new Date(p.t);
+            return dt.toLocaleString('pt-BR', {
+                day: '2-digit', month: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+            });
+        });
+        const valores = d.pontos.map(p => p.v);
+        const n = valores.length;
+
+        const ref = d.referencias;
+        const linhaConst = (v) => new Array(n).fill(v);
+
+        _chartHistoricoRio = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Nivel (cm)',
+                        data: valores,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                        borderWidth: 2,
+                        tension: 0.25,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        order: 1,
+                    },
+                    {
+                        label: 'Atencao (450 cm)',
+                        data: linhaConst(ref.atencao),
+                        borderColor: '#facc15',
+                        borderWidth: 1,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        order: 2,
+                    },
+                    {
+                        label: 'Alerta (540 cm)',
+                        data: linhaConst(ref.alerta),
+                        borderColor: '#fb923c',
+                        borderWidth: 1,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        order: 3,
+                    },
+                    {
+                        label: 'Inundacao (620 cm)',
+                        data: linhaConst(ref.inundacao),
+                        borderColor: '#ef4444',
+                        borderWidth: 1,
+                        borderDash: [5, 4],
+                        pointRadius: 0,
+                        fill: false,
+                        order: 4,
+                    },
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: {
+                            color: '#94a3b8',
+                            font: { size: 9 },
+                            boxWidth: 12,
+                            boxHeight: 2,
+                            padding: 6,
+                            filter: (item) => item.text !== 'Nivel (cm)',
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                        titleColor: '#94a3b8',
+                        bodyColor: '#fff',
+                        displayColors: false,
+                        callbacks: {
+                            label: (context) => {
+                                if (context.dataset.label === 'Nivel (cm)') {
+                                    return `Nivel: ${context.parsed.y.toFixed(0)} cm`;
+                                }
+                                return null;
+                            }
                         }
                     }
                 },

@@ -32,6 +32,6 @@ moderacao.html
 # Node
 node_modules/
 package-lock.json
+
 baixar_dem.py
-gerar_manchas.py
 dados_dem/
