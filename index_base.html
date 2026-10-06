@@ -727,13 +727,44 @@
     <!-- ========================================== -->
     <div id="tela-clima" class="tela-oculta absolute inset-0 pb-24 overflow-y-auto bg-[#0f172a] p-6">
         <h2 class="text-2xl font-bold text-white mb-2 mt-4">Condições Climáticas</h2>
-        <p class="text-gray-400 mb-8 text-sm">Monitoramento de precipitação para a Bacia do Rio Piracicaba.</p>
+        <p class="text-gray-400 mb-6 text-sm">Previsão de chuva para os pontos-chave da Bacia do Rio Piracicaba.</p>
 
-        <div class="glass-panel p-2 rounded-2xl shadow-2xl border-t border-l border-white/20 w-full max-w-4xl mx-auto">
-            <div class="flex justify-between items-center mb-4">
+        <!-- Cards de total acumulado (24h) -->
+        <div class="grid grid-cols-3 gap-2 md:gap-3 max-w-4xl mx-auto mb-4">
+            <div class="glass-panel p-3 rounded-xl border-t border-l border-white/20 text-center">
+                <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-purple-400 leading-none mb-1.5">Nova Era</p>
+                <p class="text-xl md:text-2xl font-bold text-white leading-none">
+                    <span id="chuvaTotalNovaEra">—</span><span class="text-xs text-gray-500 ml-0.5">mm</span>
+                </p>
+                <p class="text-[9px] md:text-[10px] text-gray-500 leading-none mt-1">próximas 24h</p>
+            </div>
+            <div class="glass-panel p-3 rounded-xl border-t border-l border-white/20 text-center">
+                <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-amber-400 leading-none mb-1.5">Antônio Dias</p>
+                <p class="text-xl md:text-2xl font-bold text-white leading-none">
+                    <span id="chuvaTotalAntonioDias">—</span><span class="text-xs text-gray-500 ml-0.5">mm</span>
+                </p>
+                <p class="text-[9px] md:text-[10px] text-gray-500 leading-none mt-1">próximas 24h</p>
+            </div>
+            <div class="glass-panel p-3 rounded-xl border-t border-l border-white/20 text-center">
+                <p class="text-[10px] md:text-xs font-bold uppercase tracking-wider text-blue-400 leading-none mb-1.5">Cach. do Vale</p>
+                <p class="text-xl md:text-2xl font-bold text-white leading-none">
+                    <span id="chuvaTotalTimoteo">—</span><span class="text-xs text-gray-500 ml-0.5">mm</span>
+                </p>
+                <p class="text-[9px] md:text-[10px] text-gray-500 leading-none mt-1">próximas 24h</p>
+            </div>
+        </div>
+
+        <!-- Contexto textual -->
+        <div id="chuvaContexto"
+             class="hidden-notification max-w-4xl mx-auto mb-6 px-3 py-2 rounded-lg text-xs md:text-sm text-center bg-slate-800/40 border border-white/10 text-gray-400">
+        </div>
+
+        <!-- Gráfico -->
+        <div class="glass-panel p-3 md:p-4 rounded-2xl shadow-2xl border-t border-l border-white/20 w-full max-w-4xl mx-auto">
+            <div class="flex justify-between items-center mb-3">
                 <div>
-                    <h3 class="text-lg font-semibold text-blue-400">Precipitação Horária</h3>
-                    <p class="text-xs text-gray-400">Próximas 12 horas</p>
+                    <h3 class="text-base md:text-lg font-semibold text-blue-400">Precipitação Horária</h3>
+                    <p class="text-[10px] md:text-xs text-gray-400">Próximas 24 horas · 3 pontos da bacia</p>
                 </div>
                 <span class="flex h-3 w-3 relative">
                     <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -751,7 +782,7 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
+<!-- ========================================== -->
 <!-- TELA 4: CHAT EM TEMPO REAL                 -->
 <!-- ========================================== -->
 <div id="tela-chat" class="tela-oculta absolute inset-0 pb-[70px] bg-[#0f172a] flex flex-col">
@@ -961,49 +992,153 @@
         });
         map.addControl(geolocateControl, 'top-right');
 
+        // =============================================================================
+        // PREVISAO DE CHUVA — 3 pontos da bacia (Nova Era, Antonio Dias, Timoteo)
+        // =============================================================================
+        const PONTOS_CHUVA = [
+            { id: 'NovaEra',     nome: 'Nova Era',          lat: -19.7667, lon: -43.0261, cor: '#a78bfa' },
+            { id: 'AntonioDias', nome: 'Antônio Dias',      lat: -19.6461, lon: -42.85,   cor: '#fbbf24' },
+            { id: 'Timoteo',     nome: 'Cachoeira do Vale', lat: -19.5247, lon: -42.6408, cor: '#3b82f6' },
+        ];
+
+        let _graficoChuva = null;
+
+        function classificarChuva(mm) {
+            if (mm < 0.1) return { nivel: 'Sem chuva',      cor: 'text-gray-400'   };
+            if (mm < 4)   return { nivel: 'Chuva fraca',    cor: 'text-blue-300'   };
+            if (mm < 14)  return { nivel: 'Chuva moderada', cor: 'text-yellow-300' };
+            if (mm < 30)  return { nivel: 'Chuva forte',    cor: 'text-orange-400' };
+            return          { nivel: 'Temporal',        cor: 'text-red-400'    };
+        }
+
         async function carregarPrevisaoChuva() {
             try {
-                const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=-19.532&longitude=-42.668&hourly=precipitation&timezone=America%2FSao_Paulo&forecast_days=2');
-                const data = await response.json();
-                
+                const url = (lat, lon) =>
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
+                    `&hourly=precipitation&timezone=America%2FSao_Paulo&forecast_days=2`;
+
+                const respostas = await Promise.all(
+                    PONTOS_CHUVA.map(p => fetch(url(p.lat, p.lon)).then(r => r.json()))
+                );
+
                 const horaAtual = new Date().getHours();
-                const arrayHoras = data.hourly.time.slice(horaAtual, horaAtual + 12);
-                const arrayChuva = data.hourly.precipitation.slice(horaAtual, horaAtual + 12);
-                
-                const labelsFormatadas = arrayHoras.map(tempo => {
-                    return new Date(tempo).getHours() + 'h';
+
+                const dados = PONTOS_CHUVA.map((p, i) => {
+                    const d = respostas[i];
+                    const chuva = d.hourly.precipitation.slice(horaAtual, horaAtual + 24);
+                    const horas = d.hourly.time.slice(horaAtual, horaAtual + 24);
+                    const total = chuva.reduce((a, b) => a + (b || 0), 0);
+                    return { ponto: p, chuva, horas, total: Math.round(total * 10) / 10 };
                 });
 
-                renderizarGrafico(labelsFormatadas, arrayChuva);
+                // 1) Cards de total acumulado
+                document.getElementById('chuvaTotalNovaEra').innerText     = dados[0].total;
+                document.getElementById('chuvaTotalAntonioDias').innerText = dados[1].total;
+                document.getElementById('chuvaTotalTimoteo').innerText     = dados[2].total;
+
+                // 2) Contexto textual por ponto
+                const elCtx = document.getElementById('chuvaContexto');
+                const frases = dados
+                    .filter(d => d.total >= 0.1)
+                    .map(d => {
+                        const c = classificarChuva(d.total);
+                        return `${c.nivel} em ${d.ponto.nome}`;
+                    });
+
+                if (frases.length === 0) {
+                    elCtx.innerText = 'Sem chuva significativa prevista nas próximas 24h.';
+                    elCtx.className = 'max-w-4xl mx-auto mb-6 px-3 py-2 rounded-lg text-xs md:text-sm text-center bg-slate-800/40 border border-white/10 text-gray-400';
+                } else {
+                    elCtx.innerText = frases.join(' · ');
+                    const piorTotal = Math.max(...dados.map(d => d.total));
+                    const piorClassif = classificarChuva(piorTotal);
+                    elCtx.className = `max-w-4xl mx-auto mb-6 px-3 py-2 rounded-lg text-xs md:text-sm text-center bg-slate-800/40 border border-white/10 ${piorClassif.cor}`;
+                }
+                elCtx.classList.remove('hidden-notification');
+
+                // 3) Grafico
+                renderizarGraficoChuva(dados);
             } catch (error) {
                 console.error("Erro ao buscar previsão do tempo:", error);
             }
         }
 
-        function renderizarGrafico(labels, dadosChuva) {
+        function renderizarGraficoChuva(dados) {
             const ctx = document.getElementById('graficoChuva').getContext('2d');
-            
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Chuva (mm)',
-                        data: dadosChuva,
-                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                        borderColor: 'rgba(59, 130, 246, 1)',
-                        borderWidth: 1,
-                        borderRadius: 4,
-                    }]
-                },
+
+            const labels = dados[0].horas.map(t => new Date(t).getHours() + 'h');
+
+            const datasets = dados.map(d => ({
+                label: d.ponto.nome,
+                data: d.chuva,
+                borderColor: d.ponto.cor,
+                backgroundColor: d.ponto.cor + '22',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: false,
+                pointRadius: (c) => (c.raw > 0 ? 2.5 : 0),
+                pointHoverRadius: 5,
+                pointBackgroundColor: d.ponto.cor,
+                pointBorderColor: d.ponto.cor,
+            }));
+
+            if (_graficoChuva) _graficoChuva.destroy();
+
+            _graficoChuva = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', titleColor: '#94a3b8', bodyColor: '#fff', displayColors: false, callbacks: { label: function(context) { return context.parsed.y + ' mm'; } } } },
-                    scales: { y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.05)' }, ticks: { color: '#64748b', font: { size: 10 } } }, x: { grid: { display: false }, ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0 } } }
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom',
+                            labels: {
+                                color: '#94a3b8',
+                                font: { size: 10 },
+                                boxWidth: 12,
+                                boxHeight: 2,
+                                padding: 8,
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#94a3b8',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)} mm`,
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } },
+                            title: {
+                                display: true,
+                                text: 'mm/h',
+                                color: '#64748b',
+                                font: { size: 10 }
+                            }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 10 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 8
+                            }
+                        }
+                    }
                 }
             });
         }
+
         carregarPrevisaoChuva();
 
                     // Contorno base do rio (canal). Cor aplicada dinamicamente por nivel.

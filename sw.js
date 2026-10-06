@@ -3,7 +3,7 @@
 // Cache básico + Push Notifications
 
 
-const CACHE_NAME = 'alerta-cdv-v4';
+const CACHE_NAME = 'alerta-cdv-v5';
 const ASSETS_TO_CACHE = ['/', '/index_base.html', '/logo.png', '/manifest.json'];
 
 // ---- Install ----
