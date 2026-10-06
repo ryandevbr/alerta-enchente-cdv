@@ -24,8 +24,27 @@ O projeto combina três fontes de dados:
 E entrega o resultado em três canais:
 
 - Site público responsivo com mapa 3D e chat comunitário
-- Bot do Telegram com alertas automáticos para a Defesa Civil
+- Bot do Telegram com alertas automáticos
 - Painel web para moderação do chat e acompanhamento de métricas
+
+---
+
+## Impacto social
+
+Cachoeira do Vale tem **21 quarteirões** dentro da planície de inundação do Rio Piracicaba. Em uma cheia severa, essa área pode ser atingida:
+
+| Categoria | Quantidade |
+|-----------|-----------:|
+| **Moradores** | **1.048** |
+| **Residências** | **730** |
+| **Comércios** | **74** |
+| **Terrenos baldios** | **21** |
+| **Outros** (igrejas, escolas, galpões) | **131** |
+| **Total de edificações e lotes** | **956** |
+
+Mais de mil pessoas podem precisar evacuar com poucas horas de aviso. É para isso que este sistema existe.
+
+*Fonte: censo de campo do bairro, 2026.*
 
 ---
 
@@ -96,15 +115,18 @@ O estudo hidrológico completo que fundamenta esse valor está na seção 5 da d
 
 ### Alertas qualitativos
 
-Devido a presença de três barragens entre as duas estações (Guilman Amorim, Sá Carvalho e Cocais Grande), a previsão numérica de nível em centímetros se mostrou inviável. O sistema opera então com alertas por faixa:
+Devido a presença de três barragens entre as duas estações (Guilman Amorim, Sá Carvalho e Cocais Grande), a previsão numérica de nível em centímetros se mostrou inviável. O sistema opera então com alertas por faixa, seguindo as cotas oficiais de referência da estação 56696000 (Timóteo), publicadas pela ANA:
 
-| Nível em Timóteo | Faixa | Ação |
-|------------------|-------|------|
-| Abaixo de 780 cm | Normal | Nenhuma |
-| 780 a 889 cm | Alerta | Notificação no Telegram |
-| 890 cm ou mais | Crítico | Notificação com prioridade máxima |
+| Nível em Timóteo | Faixa (ANA) | Ação |
+|------------------|-------------|------|
+| Abaixo de 450 cm | Normal | Nenhuma |
+| 450 a 539 cm | Atenção | Estado monitorado |
+| 540 a 619 cm | Alerta | Notificação no Telegram |
+| 620 cm ou mais | Inundação | Notificação com prioridade máxima |
 
-Além disso, o sistema monitora a defluência da UHE Sá Carvalho. Quando a CEMIG abre as comportas, uma onda adicional desce o rio e chega a Cachoeira do Vale em cerca de 4 horas.
+Além do nível da régua, o site público exibe manchas de inundação progressivas (de 620 a 1.100 cm), geradas a partir de modelo digital de elevação do terreno. Cada faixa de nível aciona a mancha correspondente sobre o mapa.
+
+O sistema também monitora a defluência da UHE Sá Carvalho. Quando a CEMIG abre as comportas, uma onda adicional desce o rio e chega a Cachoeira do Vale em cerca de 4 horas.
 
 ---
 

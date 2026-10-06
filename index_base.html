@@ -126,9 +126,14 @@
             <div class="bg-slate-800/50 p-5 rounded-lg border border-slate-700">
                 <h2 class="text-lg font-bold text-blue-400 mb-3">O que significa o "+9h" em "A Caminho"</h2>
                 <p class="text-sm leading-relaxed mb-3">
-                    A barra mostra o nível registrado em Nova Era em diferentes momentos das últimas
-                    horas. Ao arrastar para "+9h", você vê o que está sendo registrado em Nova Era <strong class="text-white">agora</strong> — 
-                    e que deve chegar a Timóteo nos próximos 9 a 10 horas.
+                    Ao arrastar o controle para "+9h", você vê a
+                    <strong class="text-white">projeção do nível que Timóteo deve registrar em 9 horas</strong>,
+                    calculada a partir da variação recente observada em Nova Era. Quanto mais a montante
+                    subiu nas últimas horas, mais alto o valor projetado.
+                </p>
+                <p class="text-sm leading-relaxed mb-3">
+                    Em "0h" você vê a leitura <strong class="text-white">real</strong> da estação de Timóteo.
+                    Nos demais pontos, é uma <strong class="text-white">estimativa</strong>.
                 </p>
                 <p class="text-sm leading-relaxed text-slate-400 italic">
                     ️ É uma ferramenta de <strong class="text-white">visualização qualitativa</strong>:
@@ -152,19 +157,33 @@
                 </p>
             </div>
 
-                    <!-- Bloco 4: Comparativo histórico -->
+                    <!-- Bloco 4: Detalhes do rio e comparativo histórico -->
                     <div class="bg-slate-800/50 p-5 rounded-lg border border-purple-500/30">
-                        <h2 class="text-lg font-bold text-purple-400 mb-3">Comparação com outros anos</h2>
+                        <h2 class="text-lg font-bold text-purple-400 mb-3">📊 Detalhes do rio e comparativo histórico</h2>
 
                         <p class="text-sm leading-relaxed mb-3">
-                            Na aba <strong class="text-white">"A Caminho"</strong>, o botão
-                            <strong class="text-purple-300">"Comparar com outros anos"</strong> mostra
-                            como o nível do rio em Timóteo está <strong class="text-white">hoje</strong>,
-                            neste mesmo dia e horário, em comparação com os anos anteriores.
+                            Na aba <strong class="text-white">"A Caminho"</strong>, toque em
+                            <strong class="text-purple-300">"Detalhes"</strong> para abrir o painel completo
+                            de dados. Ele reúne, em um só lugar:
                         </p>
 
+                        <ul class="text-sm space-y-2 text-slate-300 mb-3">
+                            <li class="flex gap-2">
+                                <span class="text-purple-400">•</span>
+                                <span><strong class="text-white">Histórico dos últimos 7 dias</strong> do nível do rio em Timóteo, com linhas de referência das cotas de atenção, alerta e inundação</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="text-purple-400">•</span>
+                                <span><strong class="text-white">Defluência da UHE Sá Carvalho</strong> nas últimas 48 horas, com estatísticas de mínima, máxima e variação</span>
+                            </li>
+                            <li class="flex gap-2">
+                                <span class="text-purple-400">•</span>
+                                <span><strong class="text-white">Comparação com outros anos</strong> — como o nível está hoje, neste mesmo dia e horário, em anos anteriores</span>
+                            </li>
+                        </ul>
+
                         <p class="text-sm leading-relaxed mb-3">
-                            Isso ajuda a responder uma pergunta importante:
+                            A comparação histórica ajuda a responder uma pergunta importante:
                             <em class="text-slate-200">"esse nível é normal para esta época do ano?"</em>
                             Em setembro, por exemplo, o rio costuma estar baixo — então 90 cm pode
                             ser completamente normal. Já em janeiro, o mesmo 90 cm pode indicar
@@ -178,15 +197,16 @@
                         </p>
                     </div>
 
-            <!-- Bloco 5: Os 3 níveis de alerta -->
-            <h2 class="text-xl font-bold text-white text-center mt-8">Os 3 Níveis de Alerta</h2>
+            <!-- Bloco 5: Os 4 níveis de alerta (cotas oficiais ANA) -->
+            <h2 class="text-xl font-bold text-white text-center mt-8">Os 4 Níveis de Alerta</h2>
             <p class="text-xs text-slate-400 text-center -mt-4 mb-2">
-                Baseados no nível da estação de Timóteo (Cachoeira do Vale)
+                Cotas oficiais da ANA para a estação de Timóteo (56696000)
             </p>
 
-            <div class="bg-slate-800/80 rounded-xl border border-green-500/30 overflow-hidden">
+            <!-- NORMAL -->
+            <div class="bg-slate-800/80 rounded-xl border border-blue-500/30 overflow-hidden">
                 <div class="p-4 border-b border-slate-700">
-                    <span class="text-green-400 font-bold">🟢 NORMAL — abaixo de 780 cm</span>
+                    <span class="text-blue-400 font-bold">🔵 NORMAL — abaixo de 450 cm</span>
                 </div>
                 <img src="img_normal.jpg" alt="Rio em nível normal" class="w-full h-40 object-cover opacity-80">
                 <div class="p-4 text-sm text-slate-300">
@@ -195,9 +215,22 @@
                 </div>
             </div>
 
+            <!-- ATENÇÃO -->
             <div class="bg-slate-800/80 rounded-xl border border-yellow-500/30 overflow-hidden">
                 <div class="p-4 border-b border-slate-700">
-                    <span class="text-yellow-400 font-bold">🟡 ALERTA — 780 cm a 889 cm</span>
+                    <span class="text-yellow-400 font-bold">🟡 ATENÇÃO — 450 a 539 cm</span>
+                </div>
+                <img src="img_atencao.jpg" alt="Rio em atenção" class="w-full h-40 object-cover opacity-80">
+                <div class="p-4 text-sm text-slate-300">
+                    O rio está acima do normal para a época. <strong class="text-white">Monitore com mais frequência</strong>
+                    e acompanhe a previsão de chuva na bacia. Nenhuma ação imediata necessária.
+                </div>
+            </div>
+
+            <!-- ALERTA -->
+            <div class="bg-slate-800/80 rounded-xl border border-orange-500/30 overflow-hidden">
+                <div class="p-4 border-b border-slate-700">
+                    <span class="text-orange-400 font-bold">🟠 ALERTA — 540 a 619 cm</span>
                 </div>
                 <img src="img_alerta.jpg" alt="Rio em alerta" class="w-full h-40 object-cover opacity-80">
                 <div class="p-4 text-sm text-slate-300">
@@ -207,9 +240,10 @@
                 </div>
             </div>
 
+            <!-- INUNDAÇÃO -->
             <div class="bg-slate-800/80 rounded-xl border border-red-500/30 overflow-hidden">
                 <div class="p-4 border-b border-slate-700">
-                    <span class="text-red-400 font-bold animate-pulse">🔴 CRÍTICO — acima de 890 cm</span>
+                    <span class="text-red-400 font-bold animate-pulse">🔴 INUNDAÇÃO — 620 cm ou mais</span>
                 </div>
                 <img src="img_critico.jpg" alt="Rio em nível crítico" class="w-full h-40 object-cover opacity-80">
                 <div class="p-4 text-sm text-slate-300">
@@ -229,7 +263,7 @@
                     </li>
                     <li class="flex gap-2">
                         <span class="text-blue-400">•</span>
-                        <span><strong class="text-white">Telegram da Defesa Civil</strong> — avisos oficiais e alertas de cheia</span>
+                        <span><strong class="text-white">Telegram do Alerta Enchente CDV</strong> — alertas automáticos por faixa de cota</span>
                     </li>
                     <li class="flex gap-2">
                         <span class="text-blue-400">•</span>
