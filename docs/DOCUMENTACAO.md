@@ -2,12 +2,14 @@
 
 ## Documentacao Tecnica — Sistema de Apoio à Decisão
 
-**Versao:** 3.1
-**Data:** 26 de setembro de 2026
+**Versao:** 4.0
+**Data:** 6 de outubro de 2026
 **Autor:** Ryan Lucas de Freitas Martins (ryandevbr)
 **Projeto:** Sistema de Alerta Antecipado de Cheias do Rio Piracicaba
 **Localidade:** Cachoeira do Vale, Timoteo (MG)
 **Licenca:** MIT
+
+> **Aviso sobre o zero da regua:** as manchas de inundacao e a conversao entre cota (cm) e elevacao (m) usam o valor **provisorio de 226,34 m** como zero da regua. Este valor foi calibrado comparando a gravacao de drone da cheia de 10/01/2022 com o DEM Copernicus. Ha um e-mail pendente de resposta na ANA solicitando o zero oficial. Se o valor oficial divergir, todas as manchas serao regeradas (o pipeline leva cerca de 1 minuto).
 
 ---
 
@@ -75,6 +77,25 @@ O Alerta Enchente CDV entrega antecedencia real:
 2. Monitora a UHE Sa Carvalho (barragem intermediaria) — 4h de antecedencia
 3. Dispara alertas no Telegram e no site assim que o nivel cruza limiares criticos
 4. Da contexto via comparativo historico e chat comunitario
+
+### 2.3 Impacto social
+
+Cachoeira do Vale tem **21 quarteiroes** dentro da planicie de inundacao do Rio Piracicaba. Em uma cheia severa, essa area pode ser atingida:
+
+| Categoria | Quantidade |
+|---|---:|
+| **Moradores** | **1.048** |
+| **Residencias** | **730** |
+| **Comercios** | **74** |
+| **Terrenos baldios** | **21** |
+| **Outros** (igrejas, escolas, galpoes) | **131** |
+| **Total de edificacoes e lotes** | **956** |
+
+Fonte: censo de campo do bairro, 2026.
+
+Esses numeros justificam o investimento no sistema: mais de mil pessoas podem precisar evacuar com poucas horas de aviso.
+
+---
 
 ---
 
@@ -157,6 +178,28 @@ Estacoes monitoradas:
 | 56675080 | UHE Guilman Jusante | Intermediaria | 60 min |
 | 56688080 | Sa Carvalho Barramento | Reservatorio | 60 min |
 
+#### Cotas oficiais de referencia (ficha da estacao 56696000)
+
+A ficha da estacao Mario de Carvalho, publicada pelo SNIRH, define quatro niveis de referencia que o sistema adota como espinha dorsal dos alertas:
+
+| Tipo | Valor | Significado |
+|---|---|---|
+| Estiagem | 137 cm | Nivel minimo historico |
+| Atencao | 450 cm | Nivel acima do normal para a epoca |
+| Alerta | 540 cm | Preparacao recomendada |
+| Inundacao | 620 cm | Risco confirmado de alagamento |
+
+Notas sobre a ficha:
+
+- **Altitude da estacao:** 232 m
+- **Offset +18 cm aplicado em 10/01/2022** no transdutor de pressao (registro textual: "Transdutor substituido. Ajuste de off set em +18 cm 10/01/22")
+- **Curvas de descarga validas ate 521 cm.** Acima desse valor, a conversao nivel-vazao e extrapolacao e nao deve ser usada como dado operacional
+- **Nivel maximo aprovado nos filtros** (mes de janeiro): 1000 cm
+
+A ficha completa esta disponivel no portal do SNIRH (ver Anexos, secao 17.4).
+
+#### Dados extraidos
+
 Dados extraidos: `data_hora`, `nivel_cm`, `chuva_mm`, `vazao_m3s`
 
 Particularidades da API:
@@ -200,6 +243,18 @@ Gatilhos operacionais oficiais (do PAE CEMIG):
 
 Usado na aba "Previsao" do site. Gratuito, sem autenticacao.
 Endpoint: `https://api.open-meteo.com/v1/forecast`
+
+A aba consulta **3 pontos da bacia em paralelo**, para mostrar como a chuva se distribui a montante e a jusante:
+
+| Ponto | Latitude | Longitude | Papel |
+|---|---|---|---|
+| Nova Era | -19,7667 | -43,0261 | Montante (9-10h de antecedencia) |
+| Antonio Dias | -19,6461 | -42,85 | Meio da bacia (4h) |
+| Cachoeira do Vale | -19,5247 | -42,6408 | Local (reativo) |
+
+As coordenadas sao as mesmas das estacoes ANA correspondentes, para manter consistencia espacial entre dados fluviometricos e meteorologicos.
+
+Horizonte: 24h, hora a hora. Exibicao: cards de total acumulado + grafico de linhas sobrepostas + contexto textual por ponto.
 
 ---
 
@@ -255,6 +310,46 @@ Joao Monlevade --------------------------------------+
                                                           v
                                                        TIMOTEO
 ```
+
+### 5.5 Calibracao do zero da regua e manchas de inundacao
+
+Para gerar manchas de inundacao que representem fielmente a area atingida, foi necessario determinar a elevacao absoluta do zero da regua da estacao 56696000 (o ponto em que o nivel marca 0 cm).
+
+**Metodo adotado:**
+
+1. Gravacao de drone da cheia de 10/01/2022, com o rio em 891 cm
+2. Traçado manual do poligono da area alagada observada no video (`mancha_manual.geojson`)
+3. Amostragem da elevacao do terreno em 92 pontos da borda desse poligono, usando o DEM Copernicus 30m
+4. Escolha do percentil 85 das elevacoes (235,25 m) como referencia intermediaria
+5. Zero da regua calculado como: `zero = elevacao_p85 - cota_2022 = 235,25 - 8,91 = 226,34 m`
+
+**Status:** valor provisorio. Há e-mail pendente na ANA (hidro@ana.gov.br) solicitando:
+
+- Cota oficial do zero da regua
+- Esclarecimento sobre o offset +18 cm aplicado em 10/01/2022 (antes ou depois da gravacao de drone?)
+- Confirmacao da cota de inundacao de 620 cm
+- Curva de descarga acima de 521 cm
+
+**Implicacao:** se o zero oficial divergir de 226,34 m, todas as manchas devem ser regeradas pelo `gerar_manchas.py` (basta mudar uma constante no topo do script).
+
+---
+
+## GRUPO D — Seções 6, 7 e 10.3 (frontend, cache, estrutura)
+
+### D.1 — Funcionalidades do site (seção 6.1)
+
+Funcionalidades:
+
+- Painel SAD: nivel atual de Timoteo com badge dinamico em 4 faixas (normal, atencao, alerta, inundacao)
+- Painel CEMIG: afluencia, defluencia, volume util com cores por faixa
+- Rio base colorido: azul, amarelo, laranja ou vermelho conforme o nivel atual
+- **Manchas de inundacao progressivas:** 10 poligonos (620, 700, 750, 800, 850, 900, 950, 1000, 1050, 1100 cm) gerados a partir do DEM. A mancha correspondente ao nivel atual aparece sobre o mapa; o rio base e ocultado para evitar sobreposicao
+- **Grafico de historico do rio (7 dias):** no modal de Detalhes, com nivel maximo por hora e 3 linhas de referencia (450/540/620 cm)
+- Sparkline 48h: mini-grafico de defluencia no painel desktop
+- Comparativo: modal com nivel em outros anos
+- **Previsao de chuva em 3 pontos da bacia:** cards de total acumulado (24h), grafico de linhas sobrepostas e contexto textual por ponto
+- Dica de onboarding: aparece na primeira visita
+- PWA: instalavel no celular (Fase 1 completa)
 
 ---
 
@@ -348,7 +443,8 @@ Contador de usuarios online: Supabase Presence.
 | status_atual | Nivel Timoteo e dados CEMIG |
 | onda_desfasada | Projecao para o slider |
 | comparativo_anual | Nivel em outros anos |
-| defluencia_48h | Serie para sparkline |
+| defluencia_48h | Serie para sparkline CEMIG |
+| **historico_rio_7d** | Serie do nivel do rio nos ultimos 7 dias (maximo por hora), com min/max/tendencia 24h e referencias ANA |
 
 ### 7.3 RPCs principais
 
@@ -380,11 +476,13 @@ Contador de usuarios online: Supabase Presence.
 
 | Arquivo | Funcao |
 |---|---|
-| atualizador_tempo_real.py | Ingestao de dados ANA |
+| atualizador_tempo_real.py | Ingestao REST da ANA |
+| coletor_ana_xml.py | Ingestao XML da ANA (fallback, so roda se o REST atrasar >45 min) |
 | coletor_cemig.py | Coleta automatizada da CEMIG |
-| atualizador_cache_site.py | Calculo do cache |
+| atualizador_cache_site.py | Calculo das 5 chaves do cache |
 | alertas_qualitativos.py | Alertas por faixa |
 | monitor_saude.py | Health check |
+| gerar_manchas.py | Gera as 10 manchas de inundacao a partir do DEM (rodada manual) |
 
 ### 8.2 Arquitetura de cada script
 
@@ -404,8 +502,10 @@ Contador de usuarios online: Supabase Presence.
 
 **atualizador_cache_site.py**
 
-- Gera as 4 chaves do cache
-- status_atual, onda_desfasada, comparativo_anual, defluencia_48h
+- Gera as 5 chaves do cache
+- status_atual, onda_desfasada, comparativo_anual, defluencia_48h, historico_rio_7d
+- A chave `historico_rio_7d` agrega as leituras de Timoteo das ultimas 7 dias por hora (pega o maximo), calcula min/max, tendencia 24h e embute as referencias ANA
+- Inclui dados provisorios (origem XML) para cobertura continua — ver `coletor_ana_xml.py`
 
 **alertas_qualitativos.py**
 
@@ -417,6 +517,21 @@ Contador de usuarios online: Supabase Presence.
 
 - Verifica se os dados estao frescos
 - Notifica quando algum componente fica atrasado ou parado
+
+**coletor_ana_xml.py**
+
+- Fallback da ingestao REST. So executa se o `atualizador_tempo_real.py` estiver com mais de 45 min de atraso
+- Consome o endpoint SOAP `http://telemetriaws1.ana.gov.br/ServiceANA.asmx/DadosHidrometeorologicos`
+- Insere os dados com `fonte='xml'` e `provisorio=true` via RPC `upsert_lote_provisorio` (JSONB em lote)
+- Nao sobrescreve registros com `provisorio=false` (dados REST prevalecem)
+- Latencia tipica: 15-20 min
+
+**gerar_manchas.py**
+
+- Script manual (nao roda em CI). Le o DEM recortado (`dados_dem/dem_bairro.tif`, EPSG:31983) e gera 10 manchas de inundacao (620 a 1100 cm)
+- Pipeline: raster bathtub → poligonizacao → simplificacao (15 m) → suavizacao Chaikin (1 iteracao) → exportacao GeoJSON (EPSG:4326, precisao 5)
+- Usa o zero da regua como constante no topo do arquivo (`ZERO_REGUA_M = 226.34`). Se o valor oficial da ANA chegar, basta trocar e rodar de novo
+- Saida: `manchas_inundacao.geojson` (10 features com `properties.cota`)
 
 ### 8.3 Requirements
 
@@ -488,15 +603,23 @@ Alerta Enchente - CDV/
 │   ├── ferramentas/
 │   │   ├── formatador_geojson.py
 │   │   └── servidor_local.py
+│   ├── manchas_arquivadas/     Testes antigos de mancha (891 cm)
 │   └── imagens/
+├── dados_dem/                  DEM Copernicus 30m (nao versionado)
+│   ├── Copernicus_DSM_COG_10_S20_00_W043_00_DEM.tif
+│   ├── dem_utm23s.tif
+│   └── dem_bairro.tif
 ├── supabase/functions/
 │   ├── telegram-webhook/
 │   └── send-push/
 ├── atualizador_tempo_real.py
+├── coletor_ana_xml.py          Fallback XML da ANA
 ├── coletor_cemig.py
 ├── atualizador_cache_site.py
 ├── alertas_qualitativos.py
 ├── monitor_saude.py
+├── gerar_manchas.py            Gera as manchas de inundacao
+├── manchas_inundacao.geojson   10 manchas consolidadas (620-1100 cm)
 ├── index_base.html
 ├── moderacao.html
 ├── manifest.json
@@ -520,19 +643,18 @@ Alerta Enchente - CDV/
 
 **Arquivo:** `.github/workflows/atualizador.yml`
 
-Jobs:
+Jobs (executam em sequencia com `needs`):
 
-```
-atualizar-ana ---+
-                 +-- atualizar-cache
-coletar-cemig ---+
-                 +-- enviar-alertas
-                 +-- monitor-saude
-```
+1. atualizar-ana       Ingestao REST da ANA
+2. coletor-ana-xml     Fallback XML (so roda se o REST atrasar >45 min)
+3. coletor-cemig       Scraping da UHE Sa Carvalho
+4. atualizar-cache     Recalcula as 5 chaves do cache
+5. enviar-alertas      Verifica faixas e notifica Telegram
+6. monitor-saude       Health check do pipeline
 
-**Estado atual:** cron comentado, dispara apenas via `workflow_dispatch` (manual ou via Telegram).
+Estado atual: workflow disparado por trigger externo (cron-job.org) via API do GitHub a cada 15 minutos. Tambem pode ser disparado manualmente pelo Telegram (/menu -> "Rodar tudo").
 
-Motivo: repositorio privado consome minutos do free tier. Quando virar publico, descomentar o `schedule`.
+O schedule nativo do GitHub Actions esta comentado. O cron-job.org e mais confiavel: o schedule do GitHub tem jitter de ate 15 min e nao roda em repositorio privado sem consumir minutos do free tier.
 
 ### 11.2 Comandos Telegram disponiveis
 
@@ -706,11 +828,14 @@ DELETE FROM alertas_estado WHERE estacao LIKE 'saude_%';
 |---|---|---|
 | Codigos ANA | `atualizador_tempo_real.py`, `atualizador_cache_site.py`, `alertas_qualitativos.py` | Codigos das estacoes da nova bacia |
 | Codigo CEMIG | `coletor_cemig.py` | URL da usina, se houver barragem |
-| Limiares de nivel | `alertas_qualitativos.py`, `index_base.html` | 780/890 cm pelos valores da nova regua |
+| Limiares de nivel | `alertas_qualitativos.py`, `atualizador_cache_site.py`, `index_base.html` | 450/540/620 cm pelos valores da nova regua (consultar a ficha da estacao no SNIRH) |
 | Limiares de defluencia | `alertas_qualitativos.py` | 30, 100 e 550 m3/s |
 | Lag de transito | `atualizador_cache_site.py`, `index_base.html` | Novo valor, calculado com o estudo |
 | Coordenadas Mapbox | `index_base.html` | Centro do novo bairro |
-| GeoJSON da mancha | `index_base.html` | Poligonos da nova area de risco |
+| Coordenadas dos 3 pontos de chuva | `index_base.html`, seção `PONTOS_CHUVA` | Lat/lon das estacoes da nova bacia |
+| Zero da regua | `gerar_manchas.py` (`ZERO_REGUA_M`) | Elevacao absoluta do zero da regua local |
+| DEM da bacia | `dados_dem/dem_bairro.tif` | Novo recorte Copernicus 30m (EPSG:31983) |
+| Manchas de inundacao | `gerar_manchas.py`, `manchas_inundacao.geojson` | Regenerar com as novas cotas e o novo zero |
 | Logo | `logo.png` | Nova identidade visual |
 | Textos do site | `index_base.html`, aba Entenda | Nomes de bairros, rios, barragens |
 | Credenciais | `.env`, GitHub Secrets, Supabase Secrets | Todas as chaves |
@@ -754,11 +879,14 @@ DELETE FROM alertas_estado WHERE estacao LIKE 'saude_%';
 | Painel de moderacao | Concluido |
 | Comparativo historico | Concluido |
 | Grafico de defluencia 48h | Concluido |
+| **Manchas de inundacao (620-1100 cm)** | **Concluido** |
+| **Grafico de historico do rio (7 dias)** | **Concluido** |
+| **Previsao de chuva em 3 pontos** | **Concluido** |
 | Dashboard de metricas | Concluido |
 | Logo e Open Graph | Concluido |
 | PWA — Fase 1 (instalavel) | Concluido |
 | PWA — Fase 2 (push) | Parcial |
-| README | Concluido |
+| README (com impacto social) | Concluido |
 | Limpeza do repositorio | Concluido |
 
 ### 15.2 Roadmap pendente
@@ -766,8 +894,10 @@ DELETE FROM alertas_estado WHERE estacao LIKE 'saude_%';
 | Item | Esforco |
 |---|---|
 | Finalizar push notifications (Fase 3) | 30 min |
-| Tornar repositorio publico | 15 min |
 | Divulgar para a comunidade e coletar feedback | Continuo |
+| Aguardar resposta da ANA sobre zero da regua e offset +18 cm | Depende da ANA |
+| Revisar manchas quando zero oficial chegar | 30 min |
+| Piloto de camera ao vivo do rio (celular + YouTube Live) | 1 dia (se aprovado) |
 
 ### 15.3 Pendencias conhecidas
 
@@ -908,9 +1038,8 @@ MAPBOX_KEY=
 
 ## Fim da documentacao
 
-Versao: 3.1
-Data: 26 de setembro de 2026
-Proxima revisao: quando o repositorio for tornado publico
+Versao: 4.0
+Data: 6 de outubro de 2026
 
 ---
 
@@ -920,4 +1049,3 @@ Nota sobre manutencao: este documento deve ser atualizado sempre que:
 - Um limiar ou parametro for alterado
 - A infraestrutura mudar (Supabase, Vercel, GitHub)
 - Uma nova integracao for implementada
-
