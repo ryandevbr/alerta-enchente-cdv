@@ -517,9 +517,26 @@
                 <div class="p-3 md:p-5 overflow-y-auto">
 
                     <div class="relative w-full aspect-video bg-black/60 rounded-lg overflow-hidden border border-white/10">
+
+                        <!-- Estado 1: mensagem "em breve" (visível quando CAMERA_EM_PRODUCAO = false) -->
+                        <div id="cameraEmBreve" class="absolute inset-0 flex flex-col items-center justify-center p-4 md:p-8 text-center">
+                            <div class="w-14 h-14 md:w-20 md:h-20 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center mb-4">
+                                <svg class="w-7 h-7 md:w-10 md:h-10 text-blue-300" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-base md:text-xl font-bold text-white mb-2">Em breve: câmera ao vivo do rio</h3>
+                            <p class="text-xs md:text-sm text-slate-400 max-w-md leading-relaxed">
+                                Estamos finalizando a instalação de uma câmera comunitária na margem do Rio Piracicaba.
+                                Quando estiver pronta, esta janela mostrará a transmissão em tempo real do nível da água
+                                em Cachoeira do Vale.
+                            </p>
+                        </div>
+
+                        <!-- Estado 2: player do YouTube (visível quando CAMERA_EM_PRODUCAO = true) -->
                         <iframe id="iframeCameraAoVivo"
                                 src=""
-                                class="absolute inset-0 w-full h-full"
+                                class="absolute inset-0 w-full h-full hidden-notification"
                                 frameborder="0"
                                 allow="autoplay; encrypted-media; picture-in-picture"
                                 allowfullscreen>
@@ -2706,6 +2723,16 @@ function _renderizarModalComparativo() {
         const CAMERA_CHANNEL_ID = 'UCNvHQaWlCTC07bfEvL2eqQA';
         const CAMERA_URL_EMBED = `https://www.youtube.com/embed/live_stream?channel=${CAMERA_CHANNEL_ID}&autoplay=1&mute=1`;
 
+        // =============================================================================
+        // FLAG DE PRODUCAO
+        // false → mostra a mensagem "em breve" (camera ainda nao instalada no local)
+        // true  → mostra o player do YouTube ao vivo
+        //
+        // Quando a camera for instalada na casa do vizinho, troque para true e faca
+        // commit. Nada mais precisa ser alterado.
+        // =============================================================================
+        const CAMERA_EM_PRODUCAO = false;
+
         // Controle manual do estado. Muda para false quando a câmera cair.
         // Futuro: ler de cache_site.camera_status
         let _cameraStatus = { ao_vivo: true };  // default otimista antes do fetch
@@ -2731,7 +2758,8 @@ function _renderizarModalComparativo() {
             const modal = document.getElementById('modalCameraAoVivo');
             if (!btn) return;
 
-            const online = _cameraStatus?.ao_vivo === true;
+            // Se a camera ainda nao esta em producao, o botao fica sempre cinza
+            const online = CAMERA_EM_PRODUCAO && _cameraStatus?.ao_vivo === true;
 
             if (online) {
                 btn.classList.remove('offline');
@@ -2747,13 +2775,25 @@ function _renderizarModalComparativo() {
 
         function abrirCameraAoVivo() {
             const modal = document.getElementById('modalCameraAoVivo');
-            const iframe = document.getElementById('iframeCameraAoVivo');
-            if (!modal || !iframe) return;
+            if (!modal) return;
 
-            // Carrega o iframe só na primeira abertura (evita consumir banda toda vez)
-            if (!cameraIframeCarregado) {
-                iframe.src = CAMERA_URL_EMBED;
-                cameraIframeCarregado = true;
+            // Mostra o bloco correto conforme o modo
+            const emBreve = document.getElementById('cameraEmBreve');
+            const iframe = document.getElementById('iframeCameraAoVivo');
+
+            if (CAMERA_EM_PRODUCAO) {
+                // Modo producao: esconde mensagem, mostra iframe
+                emBreve?.classList.add('hidden-notification');
+                iframe?.classList.remove('hidden-notification');
+
+                if (!cameraIframeCarregado && iframe) {
+                    iframe.src = CAMERA_URL_EMBED;
+                    cameraIframeCarregado = true;
+                }
+            } else {
+                // Modo "em breve": mostra mensagem, esconde iframe
+                emBreve?.classList.remove('hidden-notification');
+                iframe?.classList.add('hidden-notification');
             }
 
             modal.classList.remove('hidden-notification');
