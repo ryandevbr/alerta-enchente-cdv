@@ -17,7 +17,7 @@ import sys
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-
+import requests
 import pandas as pd
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -537,7 +537,40 @@ def registrar_status(sucesso: bool, erro: Optional[str] = None) -> None:
     except Exception:
         pass  # tabela pode não existir — não crítico
 
+# STATUS DA CAMERA AO VIVO (YouTube)
+def obter_status_camera() -> Optional[dict]:
+    """
+    Consulta a API do YouTube para saber se o canal esta ao vivo.
+    Custo: 100 unidades por consulta (cota diaria: 10.000).
+    """
+    api_key = os.getenv("YOUTUBE_API_KEY")
+    channel_id = os.getenv("YOUTUBE_CHANNEL_ID", "UCNvHQaWlCTC07bfEvL2eqQA")
 
+    if not api_key:
+        log.warning("YOUTUBE_API_KEY ausente - status da camera nao verificado")
+        return None
+
+    url = "https://www.googleapis.com/youtube/v3/search"
+    params = {
+        "part": "snippet",
+        "channelId": channel_id,
+        "eventType": "live",
+        "type": "video",
+        "key": api_key,
+    }
+
+    try:
+        r = requests.get(url, params=params, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        ao_vivo = len(data.get("items", [])) > 0
+        return {
+            "ao_vivo": ao_vivo,
+            "verificado_em": datetime.now(timezone.utc).isoformat(),
+        }
+    except Exception as e:
+        log.error(f"Erro ao verificar status da camera: {e}")
+        return None
 
 # ENTRYPOINT
 
@@ -614,6 +647,18 @@ def main() -> int:
             log.warning("falha ao gravar historico_rio_7d")
     else:
         log.warning("historico_rio_7d não foi atualizado")
+
+    # ---- 6. Status da camera ao vivo (NOVO) ----
+    camera = obter_status_camera()
+    if camera:
+        ok = gravar_cache("camera_status", camera)
+        if ok:
+            estado = "AO VIVO" if camera["ao_vivo"] else "offline"
+            log.info(f"camera_status → {estado}")
+        else:
+            log.warning("falha ao gravar camera_status")
+    else:
+        log.warning("camera_status nao foi atualizado")
 
     registrar_status(True)
     return 0
