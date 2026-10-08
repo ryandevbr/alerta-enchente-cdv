@@ -108,12 +108,47 @@ def _idade_desde(ts_iso: str):
     except Exception:
         return None, None
 
+def _idade_da_camera():
+    """
+    Retorna (idade_ficticia, ts_iso) para o sistema de CHECKS.
+
+    Logica:
+      - Camera online  → (0, verificado_em)       → faixa 'ok'
+      - Camera offline → (9999, verificado_em)    → faixa 'parado'
+
+    O valor 9999 e um sentinela: como o limite e 30 min,
+    qualquer coisa acima de 60 min vira 'parado' automaticamente.
+    """
+    try:
+        r = (supabase.table("cache_site")
+             .select("dados,atualizado_em")
+             .eq("chave", "camera_status")
+             .limit(1)
+             .execute())
+    except Exception as e:
+        log.error(f"Erro ao ler camera_status: {e}")
+        return None, None
+
+    if not r.data:
+        log.warning("camera_status ausente no cache")
+        return None, None
+
+    row = r.data[0]
+    dados = row["dados"]
+    ao_vivo = dados.get("ao_vivo", False)
+    verificado_em = dados.get("verificado_em") or row["atualizado_em"]
+
+    if ao_vivo:
+        return 0, verificado_em
+
+    return 9999, verificado_em
 
 CHECKS = [
     ("saude_ana_novaera",  "ANA · Nova Era",      _idade_de_ana, (COD_NE,), 120),
     ("saude_ana_timoteo",  "ANA · Timóteo",       _idade_de_ana, (COD_T,),  120),
     ("saude_cemig",        "CEMIG · Sá Carvalho", _idade_de_cemig, (),      180),
     ("saude_cache",        "Cache do site",       _idade_de_cache, (),      120),
+    ("saude_camera",       "Câmera ao vivo",      _idade_da_camera, (),     30),
 ]
 
 
@@ -286,41 +321,6 @@ def processar_check(chave: str, nome: str, funcao, args, limite_min: float) -> b
         log.info(f"   Alerta enviado: {faixa_antiga} → {faixa_nova}")
     return ok
 
-def verificar_camera(supabase):
-    """
-    Verifica se a camera ao vivo esta offline e alerta.
-    Usa a chave cache_site.camera_status gravada pelo atualizador.
-    """
-    try:
-        resp = (
-            supabase.table("cache_site")
-            .select("dados,atualizado_em")
-            .eq("chave", "camera_status")
-            .limit(1)
-            .execute()
-        )
-    except Exception as e:
-        return None, f"Erro ao ler camera_status: {e}"
-
-    if not resp.data:
-        return None, "camera_status ausente no cache"
-
-    row = resp.data[0]
-    dados = row["dados"]
-    atualizado_em = row["atualizado_em"]
-    ao_vivo = dados.get("ao_vivo", False)
-
-    if ao_vivo:
-        return "ok", "Camera ao vivo"
-
-    # Offline — calcula ha quanto tempo
-    dt_atual = datetime.fromisoformat(atualizado_em.replace("Z", "+00:00"))
-    minutos = int((datetime.now(timezone.utc) - dt_atual).total_seconds() / 60)
-
-    if minutos >= 30:
-        return "alerta", f"Camera offline ha {minutos} min"
-    else:
-        return "ok", f"Camera offline ha {minutos} min (abaixo do limiar)"
 
 # MAIN
 
@@ -339,15 +339,6 @@ def main() -> int:
 
     log.info(f"Fim — {alertas} notificação(ões) enviada(s)")
     return 0
-
-    # Verifica camera
-    status_cam, msg_cam = verificar_camera(supabase)
-    if status_cam == "alerta":
-        # Envia Telegram (use a função que já existe no monitor_saude.py)
-        enviar_telegram(f"⚠️ {msg_cam}")
-        log.warning(msg_cam)
-    elif status_cam == "ok":
-        log.info(msg_cam)
 
 if __name__ == "__main__":
     sys.exit(main())

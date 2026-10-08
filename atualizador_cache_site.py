@@ -542,11 +542,10 @@ def obter_status_camera() -> Optional[dict]:
     """
     Consulta a API do YouTube para saber se o canal esta ao vivo.
 
-    Usa videos.list com liveStreamingDetails.concurrentViewers, que so
-    esta presente quando o video esta realmente ao vivo. Mais confiavel
-    que search.list com eventType=live (que tem lag de indexacao).
+    Usa playlistItems.list (playlist de uploads do canal) + videos.list
+    (liveStreamingDetails). Funciona mesmo com lives nao listadas.
 
-    Custo: 100 (search) + 1 (videos.list) = 101 unidades por verificacao.
+    Custo: 1 (playlistItems) + 1 (videos.list) = 2 unidades por verificacao.
     """
     api_key = os.getenv("YOUTUBE_API_KEY")
     channel_id = os.getenv("YOUTUBE_CHANNEL_ID", "UCNvHQaWlCTC07bfEvL2eqQA")
@@ -555,15 +554,16 @@ def obter_status_camera() -> Optional[dict]:
         log.warning("YOUTUBE_API_KEY ausente - status da camera nao verificado")
         return None
 
-    # Passo 1: pega os 5 videos mais recentes do canal
+    # A playlist "Uploads" tem o mesmo ID do canal, mas com "UU" em vez de "UC"
+    uploads_playlist_id = "UU" + channel_id[2:]
+
+    # Passo 1: pega os 5 videos mais recentes da playlist de uploads
     try:
         r = requests.get(
-            "https://www.googleapis.com/youtube/v3/search",
+            "https://www.googleapis.com/youtube/v3/playlistItems",
             params={
-                "part": "id",
-                "channelId": channel_id,
-                "type": "video",
-                "order": "date",
+                "part": "contentDetails",
+                "playlistId": uploads_playlist_id,
                 "maxResults": 5,
                 "key": api_key,
             },
@@ -572,20 +572,20 @@ def obter_status_camera() -> Optional[dict]:
         r.raise_for_status()
         items = r.json().get("items", [])
     except Exception as e:
-        log.error(f"Erro no search.list: {e}")
+        log.error(f"Erro no playlistItems.list: {e}")
         return None
 
     if not items:
-        # Canal sem videos nenhum — improvavel, mas trata
+        # Canal sem uploads
         return {
             "ao_vivo": False,
             "verificado_em": datetime.now(timezone.utc).isoformat(),
         }
 
     video_ids = [
-        it["id"]["videoId"]
+        it["contentDetails"]["videoId"]
         for it in items
-        if isinstance(it.get("id"), dict) and "videoId" in it["id"]
+        if it.get("contentDetails", {}).get("videoId")
     ]
 
     if not video_ids:
@@ -594,12 +594,12 @@ def obter_status_camera() -> Optional[dict]:
             "verificado_em": datetime.now(timezone.utc).isoformat(),
         }
 
-    # Passo 2: verifica quais desses videos estao ao vivo
+    # Passo 2: verifica quais estao ao vivo
     try:
         r2 = requests.get(
             "https://www.googleapis.com/youtube/v3/videos",
             params={
-                "part": "liveStreamingDetails",
+                "part": "liveStreamingDetails,snippet",
                 "id": ",".join(video_ids),
                 "key": api_key,
             },
@@ -612,19 +612,24 @@ def obter_status_camera() -> Optional[dict]:
         return None
 
     ao_vivo = False
+    video_ativo = None
+
     for item in detalhes:
         d = item.get("liveStreamingDetails", {})
-        # concurrentViewers so existe quando o video esta ao vivo
-        # (fallback: tem actualStartTime mas nao tem actualEndTime)
+        # concurrentViewers so existe quando o video esta ao vivo agora
         if "concurrentViewers" in d:
             ao_vivo = True
+            video_ativo = item.get("id")
             break
+        # Fallback: tem inicio mas nao tem fim
         if d.get("actualStartTime") and not d.get("actualEndTime"):
             ao_vivo = True
+            video_ativo = item.get("id")
             break
 
     return {
         "ao_vivo": ao_vivo,
+        "video_id": video_ativo,
         "verificado_em": datetime.now(timezone.utc).isoformat(),
     }
 
