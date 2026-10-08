@@ -1559,7 +1559,8 @@
         carregarPrevisaoDesfasada();
         carregarDadosAuxiliares();
         setTimeout(mostrarDicaDetalhes, 800);
-        setInterval(buscarNivelReal, 60000); 
+        setInterval(buscarNivelReal, 60000);
+        setInterval(carregarStatusCamera, 60000);
 
         // 5.6 MODO DESASTRE (BOTAO VERMELHO) - Ajustado para as 9 horas
         function ativarModoDesastre() {
@@ -2707,14 +2708,32 @@ function _renderizarModalComparativo() {
 
         // Controle manual do estado. Muda para false quando a câmera cair.
         // Futuro: ler de cache_site.camera_status
-        const CAMERA_AO_VIVO = true;
+        let _cameraStatus = { ao_vivo: true };  // default otimista antes do fetch
+
+        async function carregarStatusCamera() {
+            try {
+                const r = await fetch(
+                    `${SUPABASE_URL}/rest/v1/cache_site?chave=eq.camera_status&select=dados`,
+                    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+                );
+                const j = await r.json();
+                if (j && j.length && j[0].dados) {
+                    _cameraStatus = j[0].dados;
+                    atualizarStatusCamera();
+                }
+            } catch (e) {
+                console.warn('[CAMERA] Erro ao buscar status:', e);
+            }
+        }
 
         function atualizarStatusCamera() {
             const btn = document.getElementById('btnCameraAoVivo');
             const modal = document.getElementById('modalCameraAoVivo');
             if (!btn) return;
 
-            if (CAMERA_AO_VIVO) {
+            const online = _cameraStatus?.ao_vivo === true;
+
+            if (online) {
                 btn.classList.remove('offline');
                 modal?.classList.remove('offline');
             } else {
@@ -2755,7 +2774,9 @@ function _renderizarModalComparativo() {
 
         // Estado inicial ao carregar
         window.addEventListener('load', () => {
-            setTimeout(atualizarStatusCamera, 500);
+            setTimeout(() => {
+                carregarStatusCamera();
+            }, 500);
         });
 
         // ==========================================
