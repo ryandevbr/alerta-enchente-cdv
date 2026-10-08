@@ -84,6 +84,13 @@
             margin-top: 10px !important;
             margin-right: 10px !important;
         }
+
+        /* Botão e modal da câmera ao vivo */
+        #btnCameraAoVivo.offline #btnCameraDot,
+        #modalCameraAoVivo.offline #modalCameraDot {
+            background-color: #6b7280 !important;
+            animation: none !important;
+        }
     </style>
 </head>
 <body class="text-white font-sans bg-[#0f172a] fixed inset-0 overflow-hidden">
@@ -480,6 +487,67 @@
             </div>
         </div>
 
+        <!-- Modal: Câmera ao vivo -->
+        <div id="modalCameraAoVivo"
+            class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-end md:items-center justify-center hidden-notification"
+            onclick="if(event.target === this) fecharCameraAoVivo()">
+
+            <div class="glass-panel w-full md:max-w-3xl rounded-t-3xl md:rounded-2xl shadow-2xl border-t border-l border-white/20 max-h-[90vh] flex flex-col">
+
+                <!-- Cabeçalho -->
+                <div class="flex items-center justify-between p-4 border-b border-white/10 flex-shrink-0">
+                    <div class="flex items-center gap-2.5">
+                        <span id="modalCameraDot" class="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse"></span>
+                        <div>
+                            <p class="text-xs md:text-sm font-bold text-white uppercase tracking-wider leading-tight">
+                                Rio Piracicaba ao vivo
+                            </p>
+                            <p class="text-[10px] md:text-xs text-gray-500 leading-tight mt-0.5">
+                                Cachoeira do Vale · Timóteo (MG)
+                            </p>
+                        </div>
+                    </div>
+                    <button onclick="fecharCameraAoVivo()"
+                            class="text-gray-400 hover:text-white text-xl p-1 transition-colors leading-none">
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Corpo -->
+                <div class="p-3 md:p-5 overflow-y-auto">
+
+                    <div class="relative w-full aspect-video bg-black/60 rounded-lg overflow-hidden border border-white/10">
+                        <iframe id="iframeCameraAoVivo"
+                                src=""
+                                class="absolute inset-0 w-full h-full"
+                                frameborder="0"
+                                allow="autoplay; encrypted-media; picture-in-picture"
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+
+                    <!-- Fallback para cookies bloqueados -->
+                    <div class="mt-4 p-3 bg-amber-900/20 border border-amber-500/40 rounded-lg">
+                        <p class="text-[11px] md:text-xs text-amber-200 leading-relaxed">
+                            <strong>Não consegue ver?</strong> Este player usa cookies de terceiros, que alguns navegadores
+                            bloqueiam por padrão (modo anônimo, Brave, AdGuard, uBlock).
+                            <a href="https://www.youtube.com/channel/UCNvHQaWlCTC07bfEvL2eqQA/live"
+                            target="_blank" rel="noopener noreferrer"
+                            class="text-blue-300 underline hover:text-blue-200 ml-1">
+                                Abrir no YouTube →
+                            </a>
+                        </p>
+                    </div>
+
+                    <p class="text-[10px] text-gray-500 text-center mt-4 leading-relaxed">
+                        Imagem em tempo real da margem do rio em Cachoeira do Vale.
+                        Não substitui a leitura oficial da régua em Timóteo.
+                    </p>
+
+                </div>
+            </div>
+        </div>
+
 <!-- Modal do gráfico de defluência 48h -->
 <div id="modalDefluencia" 
      class="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center hidden-notification"
@@ -721,6 +789,14 @@
             <p class="hidden md:block mt-4 text-sm text-gray-300 text-center">Visualização garantida do escoamento pelo desfasamento da bacia.</p>
         </div>
     </div>
+
+<!-- Botão flutuante: câmera ao vivo -->
+<button id="btnCameraAoVivo"
+        onclick="abrirCameraAoVivo()"
+        class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-40 left-4 md:bottom-auto md:top-3 md:left-[344px] md:right-auto">
+    <span id="btnCameraDot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+    <span class="text-xs md:text-sm font-bold tracking-wider text-white">CLIQUE AQUI PARA VER O RIO AO VIVO</span>
+</button>
 
     <!-- ========================================== -->
     <!-- TELA 3: PREVISÃO DO TEMPO COMPLETA         -->
@@ -972,7 +1048,15 @@
             if (aba === 'mapa' && typeof map !== 'undefined') {
                 setTimeout(() => { map.resize(); }, 50);
             }
+
+          
+            // Esconde o botão da câmera quando não estiver no mapa
+            const btnCamera = document.getElementById('btnCameraAoVivo');
+            if (btnCamera) {
+                btnCamera.style.display = (aba === 'mapa') ? 'flex' : 'none';
+            }
         }
+        
 
         mapboxgl.accessToken = 'CHAVE_MAPBOX_AQUI'; // Insira a sua chave
         
@@ -2611,6 +2695,65 @@ function _renderizarModalComparativo() {
             });
         }
         
+        // =============================================================================
+        // CÂMERA AO VIVO — canal no YouTube (integrado em 10/2026)
+        // =============================================================================
+        const CAMERA_CHANNEL_ID = 'UCNvHQaWlCTC07bfEvL2eqQA';
+        const CAMERA_URL_EMBED = `https://www.youtube.com/embed/live_stream?channel=${CAMERA_CHANNEL_ID}&autoplay=1&mute=1`;
+
+        // Controle manual do estado. Muda para false quando a câmera cair.
+        // Futuro: ler de cache_site.camera_status
+        const CAMERA_AO_VIVO = true;
+
+        function atualizarStatusCamera() {
+            const btn = document.getElementById('btnCameraAoVivo');
+            const modal = document.getElementById('modalCameraAoVivo');
+            if (!btn) return;
+
+            if (CAMERA_AO_VIVO) {
+                btn.classList.remove('offline');
+                modal?.classList.remove('offline');
+            } else {
+                btn.classList.add('offline');
+                modal?.classList.add('offline');
+            }
+        }
+
+        // Flag que rastreia se o iframe já foi carregado alguma vez
+        let cameraIframeCarregado = false;
+
+        function abrirCameraAoVivo() {
+            const modal = document.getElementById('modalCameraAoVivo');
+            const iframe = document.getElementById('iframeCameraAoVivo');
+            if (!modal || !iframe) return;
+
+            // Carrega o iframe só na primeira abertura (evita consumir banda toda vez)
+            if (!cameraIframeCarregado) {
+                iframe.src = CAMERA_URL_EMBED;
+                cameraIframeCarregado = true;
+            }
+
+            modal.classList.remove('hidden-notification');
+            atualizarStatusCamera();
+        }
+
+        function fecharCameraAoVivo() {
+            const modal = document.getElementById('modalCameraAoVivo');
+            if (!modal) return;
+
+            modal.classList.add('hidden-notification');
+
+            // Para o stream: zera o src (economiza banda e bateria do servidor)
+            if (iframe) {
+                iframe.src = 'about:blank';
+            }
+        }
+
+        // Estado inicial ao carregar
+        window.addEventListener('load', () => {
+            setTimeout(atualizarStatusCamera, 500);
+        });
+
         // ==========================================
         // PUSH NOTIFICATIONS
         // ==========================================
