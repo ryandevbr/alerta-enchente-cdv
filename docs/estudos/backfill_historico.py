@@ -43,7 +43,7 @@ ESTACOES_BACKFILL = [
     "56675080",   # UHE Guilman Jusante (nível + vazão + chuva)
 ]
 
-DATA_INICIO_BACKFILL = datetime(2018, 12, 1, tzinfo=timezone.utc)
+DATA_INICIO_BACKFILL = datetime(2018, 8, 1, tzinfo=timezone.utc)
 
 ANA_AUTH_URL  = "https://www.ana.gov.br/hidrowebservice/EstacoesTelemetricas/OAUth/v1"
 ANA_SERIE_URL = "https://www.ana.gov.br/hidrowebservice/EstacoesTelemetricas/HidroinfoanaSerieTelemetricaDetalhada/v1"
