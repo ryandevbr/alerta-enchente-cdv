@@ -356,7 +356,7 @@ def construir_comparativo_anual() -> Optional[dict]:
         TOLERANCIA_HORAS = 3
 
         anos_anteriores = []
-        for ano in range(2019, ref_ano):
+        for ano in range(2018, ref_ano):
             # Monta a janela: mesmo dia/hora no ano X, com tolerância
             try:
                 alvo = ref_dt.replace(year=ano)
