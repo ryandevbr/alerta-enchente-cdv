@@ -40,7 +40,7 @@ log = logging.getLogger("backfill")
 # CONSTANTES
 
 ESTACOES_BACKFILL = [
-    "56675080",   # UHE Guilman Jusante (nível + vazão + chuva)
+    "56696000",   # UHE Guilman Jusante (nível + vazão + chuva)
 ]
 
 DATA_INICIO_BACKFILL = datetime(2018, 8, 1, tzinfo=timezone.utc)
