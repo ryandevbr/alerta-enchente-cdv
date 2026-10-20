@@ -534,30 +534,13 @@
                         </div>
 
                         <!-- Estado 2: player do YouTube (visível quando CAMERA_EM_PRODUCAO = true) -->
-                        <iframe id="iframeCameraAoVivo"
+                        '<iframe id="iframeCameraAoVivo"
                                 src=""
                                 class="absolute inset-0 w-full h-full hidden-notification"
                                 frameborder="0"
-                                allow="autoplay; encrypted-media; picture-in-picture"
+                                allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
                                 allowfullscreen>
-                        </iframe>
-                    </div>
-
-                    <!-- Fallback para cookies bloqueados -->
-                    <div class="text-[11px] md:text-xs text-amber-200 leading-relaxed">
-                        <p class="mb-1.5">
-                            <strong>Não consegue ver?</strong> Este player usa cookies de terceiros, que alguns navegadores
-                            bloqueiam por padrão (Samsung Internet, Opera, Brave, modo anônimo).
-                        </p>
-                        <p class="mb-1.5">
-                            <strong>Tente:</strong> desativar o bloqueio de cookies de terceiros para este site,
-                            ou limpar o cache do navegador.
-                        </p>
-                        <a href="https://www.youtube.com/channel/UCNvHQaWlCTC07bfEvL2eqQA/live"
-                        target="_blank" rel="noopener noreferrer"
-                        class="text-blue-300 underline hover:text-blue-200 font-bold">
-                            Abrir direto no YouTube →
-                        </a>
+                        </iframe>'
                     </div>
 
                     <p class="text-[10px] text-gray-500 text-center mt-4 leading-relaxed">
@@ -812,12 +795,12 @@
     </div>
 
 <!-- Botão flutuante: câmera ao vivo -->
-<!-- <button id="btnCameraAoVivo"
+<button id="btnCameraAoVivo"
         onclick="abrirCameraAoVivo()"
         class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-40 left-4 md:bottom-auto md:top-3 md:left-[344px] md:right-auto">
     <span id="btnCameraDot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
     <span class="text-xs md:text-sm font-bold tracking-wider text-white">CLIQUE AQUI PARA VER O RIO AO VIVO</span>
-</button> -->
+</button>
 
     <!-- ========================================== -->
     <!-- TELA 3: PREVISÃO DO TEMPO COMPLETA         -->
@@ -2718,10 +2701,9 @@ function _renderizarModalComparativo() {
         }
         
         // =============================================================================
-        // CÂMERA AO VIVO — canal no YouTube (integrado em 10/2026)
+        // CÂMERA AO VIVO —  (integrado em 10/2026)
         // =============================================================================
-        const CAMERA_CHANNEL_ID = 'UCNvHQaWlCTC07bfEvL2eqQA';
-        const CAMERA_URL_EMBED = `https://www.youtube.com/embed/live_stream?channel=${CAMERA_CHANNEL_ID}&autoplay=1&mute=1`;
+        const CAMERA_URL_EMBED = `https://video.alertaenchentecdv.app/live/rio`;
 
         // =============================================================================
         // FLAG DE PRODUCAO
@@ -2731,7 +2713,7 @@ function _renderizarModalComparativo() {
         // Quando a camera for instalada na casa do vizinho, troque para true e faca
         // commit. Nada mais precisa ser alterado.
         // =============================================================================
-        const CAMERA_EM_PRODUCAO = false;
+        const CAMERA_EM_PRODUCAO = true;
 
         // Controle manual do estado. Muda para false quando a câmera cair.
         // Futuro: ler de cache_site.camera_status

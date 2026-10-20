@@ -537,101 +537,34 @@ def registrar_status(sucesso: bool, erro: Optional[str] = None) -> None:
     except Exception:
         pass  # tabela pode não existir — não crítico
 
-# STATUS DA CAMERA AO VIVO (YouTube)
+# STATUS DA CAMERA AO VIVO (MediaMTX no VPS)
 def obter_status_camera() -> Optional[dict]:
     """
-    Consulta a API do YouTube para saber se o canal esta ao vivo.
-
-    Usa playlistItems.list (playlist de uploads do canal) + videos.list
-    (liveStreamingDetails). Funciona mesmo com lives nao listadas.
-
-    Custo: 1 (playlistItems) + 1 (videos.list) = 2 unidades por verificacao.
+    Consulta a API do MediaMTX no VPS para saber se o stream esta ativo.
     """
-    api_key = os.getenv("YOUTUBE_API_KEY")
-    channel_id = os.getenv("YOUTUBE_CHANNEL_ID", "UCNvHQaWlCTC07bfEvL2eqQA")
-
-    if not api_key:
-        log.warning("YOUTUBE_API_KEY ausente - status da camera nao verificado")
-        return None
-
-    # A playlist "Uploads" tem o mesmo ID do canal, mas com "UU" em vez de "UC"
-    uploads_playlist_id = "UU" + channel_id[2:]
-
-    # Passo 1: pega os 5 videos mais recentes da playlist de uploads
+    # Substitua pelo IP do seu VPS
+    VPS_IP = "151.244.40.209"
+    
     try:
-        r = requests.get(
-            "https://www.googleapis.com/youtube/v3/playlistItems",
-            params={
-                "part": "contentDetails",
-                "playlistId": uploads_playlist_id,
-                "maxResults": 5,
-                "key": api_key,
-            },
-            timeout=10,
-        )
+        # Consulta a lista de streams ativos
+        r = requests.get(f"http://{VPS_IP}:9997/v3/paths/list", timeout=10)
         r.raise_for_status()
-        items = r.json().get("items", [])
-    except Exception as e:
-        log.error(f"Erro no playlistItems.list: {e}")
-        return None
+        data = r.json()
+        
+        ao_vivo = False
+        # Verifica se o nosso stream 'live/rio' esta na lista e pronto
+        for item in data.get("items", []):
+            if item.get("name") == "live/rio" and item.get("ready") == True:
+                ao_vivo = True
+                break
 
-    if not items:
-        # Canal sem uploads
         return {
-            "ao_vivo": False,
+            "ao_vivo": ao_vivo,
             "verificado_em": datetime.now(timezone.utc).isoformat(),
         }
-
-    video_ids = [
-        it["contentDetails"]["videoId"]
-        for it in items
-        if it.get("contentDetails", {}).get("videoId")
-    ]
-
-    if not video_ids:
-        return {
-            "ao_vivo": False,
-            "verificado_em": datetime.now(timezone.utc).isoformat(),
-        }
-
-    # Passo 2: verifica quais estao ao vivo
-    try:
-        r2 = requests.get(
-            "https://www.googleapis.com/youtube/v3/videos",
-            params={
-                "part": "liveStreamingDetails,snippet",
-                "id": ",".join(video_ids),
-                "key": api_key,
-            },
-            timeout=10,
-        )
-        r2.raise_for_status()
-        detalhes = r2.json().get("items", [])
     except Exception as e:
-        log.error(f"Erro no videos.list: {e}")
+        log.error(f"Erro ao verificar status da camera no VPS: {e}")
         return None
-
-    ao_vivo = False
-    video_ativo = None
-
-    for item in detalhes:
-        d = item.get("liveStreamingDetails", {})
-        # concurrentViewers so existe quando o video esta ao vivo agora
-        if "concurrentViewers" in d:
-            ao_vivo = True
-            video_ativo = item.get("id")
-            break
-        # Fallback: tem inicio mas nao tem fim
-        if d.get("actualStartTime") and not d.get("actualEndTime"):
-            ao_vivo = True
-            video_ativo = item.get("id")
-            break
-
-    return {
-        "ao_vivo": ao_vivo,
-        "video_id": video_ativo,
-        "verificado_em": datetime.now(timezone.utc).isoformat(),
-    }
 
 # ENTRYPOINT
 
