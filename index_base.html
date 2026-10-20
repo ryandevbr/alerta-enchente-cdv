@@ -543,10 +543,27 @@
                         </iframe>'
                     </div>
 
-                    <p class="text-[10px] text-gray-500 text-center mt-4 leading-relaxed">
-                        Imagem em tempo real da margem do rio em Cachoeira do Vale.
-                        Não substitui a leitura oficial da régua em Timóteo.
-                    </p>
+             <!-- Painel de status do equipamento (Temperatura) -->
+            <div class="mt-4 flex items-center justify-center gap-4 text-[10px] md:text-xs text-gray-500 bg-black/20 py-2 rounded-lg border border-white/5">
+                <div class="flex items-center gap-1">
+                    <span class="font-bold text-gray-400">CPU:</span>
+                    <span id="tempCameraCpu">--</span>°C
+                </div>
+                <div class="w-px h-3 bg-white/20"></div>
+                <div class="flex items-center gap-1">
+                    <span class="font-bold text-gray-400">Câmera:</span>
+                    <span id="tempCameraSensor">--</span>°C
+                </div>
+                <div class="w-px h-3 bg-white/20"></div>
+                <div class="flex items-center gap-1">
+                    <span class="font-bold text-gray-400">GPU:</span>
+                    <span id="tempCameraGpu">--</span>°C
+                </div>
+            </div>
+
+            <p class="text-[10px] text-gray-500 text-center mt-3 leading-relaxed">
+                Imagem em tempo real da margem do rio em Cachoeira do Vale.
+            </p>
 
                 </div>
             </div>
@@ -2755,6 +2772,40 @@ function _renderizarModalComparativo() {
         // Flag que rastreia se o iframe já foi carregado alguma vez
         let cameraIframeCarregado = false;
 
+        async function carregarTemperaturaCamera() {
+            try {
+                const r = await fetch(
+                    `${SUPABASE_URL}/rest/v1/cache_site?chave=eq.camera_temp&select=dados`,
+                    { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+                );
+                const j = await r.json();
+                
+                if (j && j.length > 0 && j[0].dados) {
+                    const temp = j[0].dados;
+                    
+                        // Formata e converte de milésimos para graus (se necessário)
+                        const format = (val) => {
+                            if (!val) return '--';
+                            let num = Number(val);
+                            if (num > 200) num = num / 1000; // Se vier 45000, vira 45
+                            return num.toFixed(1);
+                        };
+
+                        document.getElementById('tempCameraCpu').innerText = format(temp.cpu);
+                        document.getElementById('tempCameraSensor').innerText = format(temp.camera);
+                        document.getElementById('tempCameraGpu').innerText = format(temp.gpu);
+
+                    // Opcional: mudar a cor se a CPU passar de 60°C
+                    const cpuEl = document.getElementById('tempCameraCpu');
+                    if (temp.cpu > 60) cpuEl.className = 'font-bold text-red-400';
+                    else if (temp.cpu > 50) cpuEl.className = 'font-bold text-orange-400';
+                    else cpuEl.className = 'font-bold text-green-400';
+                }
+            } catch (e) {
+                console.warn('[CAMERA] Erro ao buscar temperatura:', e);
+            }
+        }
+
         function abrirCameraAoVivo() {
             const modal = document.getElementById('modalCameraAoVivo');
             if (!modal) return;
@@ -2778,9 +2829,12 @@ function _renderizarModalComparativo() {
                 iframe?.classList.add('hidden-notification');
             }
 
-            modal.classList.remove('hidden-notification');
-            atualizarStatusCamera();
-        }
+                modal.classList.remove('hidden-notification');
+                atualizarStatusCamera();
+                
+                // Busca a temperatura sempre que o modal abrir
+                carregarTemperaturaCamera(); 
+            }
 
         function fecharCameraAoVivo() {
             const modal = document.getElementById('modalCameraAoVivo');
