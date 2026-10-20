@@ -1,30 +1,14 @@
-
-# Alerta Enchente CDV — Dependências Python
+# Alerta Enchente CDV — Dependências de Produção (Pipeline / GitHub Actions)
 # Python 3.11+ recomendado
 
-
-# ---- Clientes HTTP e banco ----
+# ---- Clientes HTTP, Variáveis de Ambiente e Banco (Supabase) ----
 requests>=2.32.0
 supabase>=2.9.0
 python-dotenv>=1.0.1
 
-# ---- Análise de dados ----
+# ---- Processamento de Séries Temporais ----
 pandas>=2.2.0
 numpy>=1.26.0
 
-# ---- Gráficos (usado em validações/estudos) ----
-matplotlib>=3.8.0
-
-# ---- Machine Learning (usado em validações) ----
-scikit-learn>=1.4.0
-
-# ---- Automação de browser (scraping CEMIG) ----
+# ---- Automação de Browser (Scraping CEMIG) ----
 playwright>=1.45.0
-
-# Comunicação com APIs externas (ANA e Telegram)
-requests
-python-telegram-bot
-
-# Ligação à Base de Dados (Supabase / PostgreSQL)
-SQLAlchemy
-psycopg2-binary
