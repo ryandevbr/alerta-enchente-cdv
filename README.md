@@ -60,6 +60,8 @@ Sistema em operação desde setembro de 2026. Todas as funcionalidades principai
 - Dashboard de métricas de engajamento
 - Comparativo histórico e gráfico de defluência
 - Progressive Web App (instalável)
+- Câmera ao vivo integrada (VPS próprio com WebRTC e baixa latência)
+- Monitoramento de temperatura do equipamento em tempo real
 
 Itens pendentes:
 
@@ -105,6 +107,12 @@ Site CEMIG     ----->  coletor_cemig.py           ----->  historico_cemig
                                                        |
                                                        v
                                                     Telegram
+
+CÂMERA (Hardware independente)
+Celular (IRL Pro) -----> VPS (MediaMTX) -----> Site (WebRTC) 
+      |                        ^
+      v                        |
+MacroDroid --------------------+ (API de status e temperatura)
 ```
 
 ### Tempo de trânsito

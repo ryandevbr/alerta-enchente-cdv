@@ -2,8 +2,8 @@
 
 ## Documentacao Tecnica — Sistema de Apoio à Decisão
 
-**Versao:** 4.0
-**Data:** 6 de outubro de 2026
+**Versao:** 4.1
+**Data:** 20 de outubro de 2026
 **Autor:** Ryan Lucas de Freitas Martins (ryandevbr)
 **Projeto:** Sistema de Alerta Antecipado de Cheias do Rio Piracicaba
 **Localidade:** Cachoeira do Vale, Timoteo (MG)
@@ -419,6 +419,20 @@ Moderacao:
 
 Contador de usuarios online: Supabase Presence.
 
+### 6.4 Câmera ao Vivo (Monitoramento Visual)
+**Hospedagem:** VPS (StreetHosting - R$ 26/mês)
+**Tecnologia:** MediaMTX + WebRTC
+
+O sistema conta com uma câmera física instalada na margem do rio, transmitindo 24/7. 
+- **Hardware:** Celular Android antigo (Redmi Note 11) adaptado em caixa protetora.
+- **Software de Captura:** IRL Pro (envia RTMP para o VPS).
+- **Automação:** MacroDroid gerencia o boot, abertura dos apps e telemetria térmica.
+- **Controle Remoto:** RustDesk (acesso via root para manutenção).
+
+**Fluxo de Vídeo:** O celular envia o vídeo para o MediaMTX no VPS. O site consome via WebRTC, resultando em latência inferior a 1 segundo. Não há dependência de YouTube ou cookies de terceiros.
+
+**Telemetria:** A cada 15 minutos, o MacroDroid lê os sensores do Android (CPU, GPU e Câmera) e envia para a chave `camera_temp` no `cache_site`. O frontend exibe esses dados no modal da câmera.
+
 ---
 
 ## 7. Banco de Dados
@@ -506,6 +520,7 @@ Contador de usuarios online: Supabase Presence.
 - status_atual, onda_desfasada, comparativo_anual, defluencia_48h, historico_rio_7d
 - A chave `historico_rio_7d` agrega as leituras de Timoteo das ultimas 7 dias por hora (pega o maximo), calcula min/max, tendencia 24h e embute as referencias ANA
 - Inclui dados provisorios (origem XML) para cobertura continua — ver `coletor_ana_xml.py`
+- A chave `camera_status` agora é gerada consultando a API do MediaMTX no VPS (porta 9997), verificando se o stream 'live/rio' está ativo e pronto.
 
 **alertas_qualitativos.py**
 
