@@ -2774,31 +2774,32 @@ function _renderizarModalComparativo() {
 
         async function carregarTemperaturaCamera() {
             try {
+                // Busca a última linha inserida na tabela de histórico
                 const r = await fetch(
-                    `${SUPABASE_URL}/rest/v1/cache_site?chave=eq.camera_temp&select=dados`,
+                    `${SUPABASE_URL}/rest/v1/historico_temperatura?select=*&order=created_at.desc&limit=1`,
                     { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
                 );
                 const j = await r.json();
                 
-                if (j && j.length > 0 && j[0].dados) {
-                    const temp = j[0].dados;
+                if (j && j.length > 0) {
+                    const temp = j[0];
                     
-                        // Formata e converte de milésimos para graus (se necessário)
-                        const format = (val) => {
-                            if (!val) return '--';
-                            let num = Number(val);
-                            if (num > 200) num = num / 1000; // Se vier 45000, vira 45
-                            return num.toFixed(1);
-                        };
+                    // Formata e converte de milésimos para graus
+                    const format = (val) => {
+                        if (!val) return '--';
+                        let num = Number(val);
+                        if (num > 200) num = num / 1000; // Se vier 45000, vira 45
+                        return num.toFixed(1);
+                    };
 
-                        document.getElementById('tempCameraCpu').innerText = format(temp.cpu);
-                        document.getElementById('tempCameraSensor').innerText = format(temp.camera);
-                        document.getElementById('tempCameraGpu').innerText = format(temp.gpu);
+                    document.getElementById('tempCameraCpu').innerText = format(temp.cpu);
+                    document.getElementById('tempCameraSensor').innerText = format(temp.camera);
+                    document.getElementById('tempCameraGpu').innerText = format(temp.gpu);
 
-                    // Opcional: mudar a cor se a CPU passar de 60°C
+                    // Alerta visual
                     const cpuEl = document.getElementById('tempCameraCpu');
-                    if (temp.cpu > 60) cpuEl.className = 'font-bold text-red-400';
-                    else if (temp.cpu > 50) cpuEl.className = 'font-bold text-orange-400';
+                    if (temp.cpu > 60000) cpuEl.className = 'font-bold text-red-400';
+                    else if (temp.cpu > 50000) cpuEl.className = 'font-bold text-orange-400';
                     else cpuEl.className = 'font-bold text-green-400';
                 }
             } catch (e) {
