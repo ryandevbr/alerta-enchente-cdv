@@ -80,9 +80,21 @@
 
         .tela-oculta { display: none !important; }
 
+        /* Controles do Mapbox no Desktop */
         .mapboxgl-ctrl-top-right {
             margin-top: 10px !important;
             margin-right: 10px !important;
+        }
+
+        /* No Celular: Botão de localização desce e vai para a direita, 
+           alinhando com a altura do botão da câmera */
+        @media (max-width: 768px) {
+            .mapboxgl-ctrl-top-right {
+                top: auto !important;
+                bottom: 90px !important;
+                right: 8px !important; 
+                margin: 0 !important;
+            }
         }
 
         /* Botão e modal da câmera ao vivo */
@@ -91,6 +103,7 @@
             background-color: #6b7280 !important;
             animation: none !important;
         }
+        
     </style>
 </head>
 <body class="text-white font-sans bg-[#0f172a] fixed inset-0 overflow-hidden">
@@ -204,61 +217,74 @@
                         </p>
                     </div>
 
-            <!-- Bloco 5: Os 4 níveis de alerta (cotas oficiais ANA) -->
-            <h2 class="text-xl font-bold text-white text-center mt-8">Os 4 Níveis de Alerta</h2>
-            <p class="text-xs text-slate-400 text-center -mt-4 mb-2">
-                Cotas oficiais da ANA para a estação de Timóteo (56696000)
-            </p>
+                    <!-- Bloco 5: Os 4 níveis de alerta (com GIF interativo) -->
+                    <h2 class="text-xl font-bold text-white text-center mt-8">Os 4 Níveis de Alerta</h2>
+                    <p class="text-xs text-slate-400 text-center -mt-4 mb-4">
+                        Cotas oficiais da ANA para a estação de Timóteo (56696000)
+                    </p>
 
-            <!-- NORMAL -->
-            <div class="bg-slate-800/80 rounded-xl border border-blue-500/30 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                    <span class="text-blue-400 font-bold">🔵 NORMAL — abaixo de 450 cm</span>
-                </div>
-                <img src="img_normal.jpg" alt="Rio em nível normal" class="w-full h-40 object-cover opacity-80">
-                <div class="p-4 text-sm text-slate-300">
-                    O rio está dentro da calha. Sem risco imediato para as áreas ribeirinhas.
-                    Você pode usar o sistema normalmente, sem necessidade de ação.
-                </div>
-            </div>
+                    <!-- GIF do Slider -->
+                    <div class="flex justify-center mb-8">
+                        <div class="relative w-full max-w-lg rounded-xl overflow-hidden shadow-2xl border border-white/10 bg-slate-800/50">
+                            <!-- O GIF abaixo mostra o slider alterando a cor do rio -->
+                            <img src="/slider_rio.gif" alt="Demonstração do mapa e as cores do rio conforme o nível" class="w-full h-auto">
+                        </div>
+                    </div>
 
-            <!-- ATENÇÃO -->
-            <div class="bg-slate-800/80 rounded-xl border border-yellow-500/30 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                    <span class="text-yellow-400 font-bold">🟡 ATENÇÃO — 450 a 539 cm</span>
-                </div>
-                <img src="img_atencao.jpg" alt="Rio em atenção" class="w-full h-40 object-cover opacity-80">
-                <div class="p-4 text-sm text-slate-300">
-                    O rio está acima do normal para a época. <strong class="text-white">Monitore com mais frequência</strong>
-                    e acompanhe a previsão de chuva na bacia. Nenhuma ação imediata necessária.
-                </div>
-            </div>
+                    <!-- Textos explicativos -->
+                    <div class="space-y-4 max-w-2xl mx-auto">
+                        
+                        <!-- AZUL -->
+                        <div class="bg-slate-800/50 p-4 rounded-lg border-l-4 border-blue-500 shadow-lg">
+                            <h3 class="font-bold text-blue-400 mb-1 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                NORMAL — abaixo de 450 cm
+                            </h3>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                O rio está dentro da calha. Sem risco imediato para as áreas ribeirinhas. 
+                                Você pode usar o sistema normalmente, sem necessidade de ação.
+                            </p>
+                        </div>
 
-            <!-- ALERTA -->
-            <div class="bg-slate-800/80 rounded-xl border border-orange-500/30 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                    <span class="text-orange-400 font-bold">🟠 ALERTA — 540 a 619 cm</span>
-                </div>
-                <img src="img_alerta.jpg" alt="Rio em alerta" class="w-full h-40 object-cover opacity-80">
-                <div class="p-4 text-sm text-slate-300">
-                    <strong class="text-white">Comece a preparar.</strong> Retire móveis e objetos de valor
-                    dos andares baixos. Separe documentos importantes. Fique atento aos alertas oficiais
-                    e evite áreas próximas ao rio.
-                </div>
-            </div>
+                        <!-- AMARELO -->
+                        <div class="bg-slate-800/50 p-4 rounded-lg border-l-4 border-yellow-500 shadow-lg">
+                            <h3 class="font-bold text-yellow-400 mb-1 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                                ATENÇÃO — 450 a 539 cm
+                            </h3>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                O rio está acima do normal para a época. Monitore com mais frequência e acompanhe 
+                                a previsão de chuva na bacia. Nenhuma ação imediata necessária.
+                            </p>
+                        </div>
 
-            <!-- INUNDAÇÃO -->
-            <div class="bg-slate-800/80 rounded-xl border border-red-500/30 overflow-hidden">
-                <div class="p-4 border-b border-slate-700">
-                    <span class="text-red-400 font-bold animate-pulse">🔴 INUNDAÇÃO — 620 cm ou mais</span>
-                </div>
-                <img src="img_critico.jpg" alt="Rio em nível crítico" class="w-full h-40 object-cover opacity-80">
-                <div class="p-4 text-sm text-slate-300">
-                    <strong class="text-white">Risco confirmado de alagamento.</strong> Evacue as áreas
-                    ribeirinhas imediatamente. Siga as orientações da Defesa Civil. Não tente atravessar
-                    ruas alagadas.
-                </div>
-            </div>
+                        <!-- LARANJA -->
+                        <div class="bg-slate-800/50 p-4 rounded-lg border-l-4 border-orange-500 shadow-lg">
+                            <h3 class="font-bold text-orange-400 mb-1 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+                                ALERTA — 540 a 619 cm
+                            </h3>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                <strong class="text-white">Comece a preparar.</strong> Retire móveis e objetos de valor 
+                                dos andares baixos. Separe documentos importantes. Fique atento aos alertas oficiais 
+                                e evite áreas próximas ao rio.
+                            </p>
+                        </div>
+
+                        <!-- VERMELHO -->
+                        <div class="bg-slate-800/50 p-4 rounded-lg border-l-4 border-red-500 shadow-lg">
+                            <h3 class="font-bold text-red-400 mb-1 flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
+                                INUNDAÇÃO — 620 cm ou mais
+                            </h3>
+                            <p class="text-sm text-slate-300 leading-relaxed">
+                                <strong class="text-white">Risco confirmado de alagamento.</strong> Evacue as áreas 
+                                ribeirinhas imediatamente. Siga as orientações da Defesa Civil. Não tente atravessar 
+                                ruas alagadas.
+                            </p>
+                        </div>
+
+                    </div>
 
             <!-- Bloco 6: Como receber alertas -->
             <div class="bg-blue-900/30 p-5 rounded-lg border border-blue-500/40 mt-8">
