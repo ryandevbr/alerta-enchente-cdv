@@ -428,3 +428,5 @@ def obter_status_camera() -> Optional[dict[str, Any]]:
     except Exception as exc:
         log.error("Erro ao verificar status da câmera no VPS: %s", exc)
         return None
+
+        
