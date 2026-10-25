@@ -116,6 +116,15 @@ def coletar_dados_cemig() -> Optional[dict[str, Any]]:
             dados["usina"] = "UHE_SA_CARVALHO"
             dados["fonte"] = "cemig.com.br"
 
+            # --- SANITY CHECK: Evitar salvar zeros falsos da CEMIG ---
+            if dados.get("defluencia_m3s") is not None and dados["defluencia_m3s"] < 1.0:
+                log.warning("   ⚠️ Defluência zerada detectada (falha no site da CEMIG). Salvando como None.")
+                dados["defluencia_m3s"] = None
+                
+            if dados.get("afluencia_m3s") is not None and dados["afluencia_m3s"] < 1.0:
+                log.warning("   ⚠️ Afluência zerada detectada (falha no site da CEMIG). Salvando como None.")
+                dados["afluencia_m3s"] = None
+
             log.info(
                 "Coleta: afluência=%s defluência=%s nível=%s vol_útil=%s%%",
                 dados["afluencia_m3s"],

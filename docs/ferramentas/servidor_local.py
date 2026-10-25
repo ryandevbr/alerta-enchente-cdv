@@ -17,7 +17,6 @@ ARQUIVOS_TEMPLATE = [
     ("moderacao_base.html", "moderacao.html"),
 ]
 
-
 def gerar_arquivos_html() -> None:
     """Substitui placeholders de configuração nos arquivos HTML base."""
     load_dotenv(RAIZ / ".env")
@@ -37,7 +36,6 @@ def gerar_arquivos_html() -> None:
         caminho_saida.write_text(html, encoding="utf-8")
         print(f"Gerado: {saida}")
 
-
 def main() -> int:
     os.chdir(RAIZ)
     gerar_arquivos_html()
@@ -50,7 +48,6 @@ def main() -> int:
         except KeyboardInterrupt:
             print("\nServidor encerrado.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
