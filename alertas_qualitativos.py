@@ -28,16 +28,16 @@ from core.telegram import obter_direcao_transicao, processar_transicao_alerta
 
 log = configurar_logger("alertas", formato_data="%H:%M:%S")
 
-# FAIXAS DE NÍVEL (ANA) — em cm
+# FAIXAS DE NÍVEL (ANA) — em cm (ATUALIZADO COM AS COTAS OFICIAIS)
 FAIXAS_ANA = {
-    "normal": {"min": -9999.0, "max": 779.99, "emoji": "🟢", "label": "NORMAL"},
-    "alerta": {"min": 780.0, "max": 889.99, "emoji": "🟡", "label": "ALERTA"},
-    "critico": {"min": 890.0, "max": 99999.0, "emoji": "🔴", "label": "CRÍTICO"},
+    "normal": {"min": -9999.0, "max": 449.99, "emoji": "🔵", "label": "NORMAL"},
+    "atencao": {"min": 450.0, "max": 539.99, "emoji": "🟡", "label": "ATENÇÃO"},
+    "alerta": {"min": 540.0, "max": 619.99, "emoji": "🟠", "label": "ALERTA"},
+    "inundacao": {"min": 620.0, "max": 99999.0, "emoji": "🔴", "label": "INUNDAÇÃO"},
 }
-ORDEM_FAIXAS_ANA = ["normal", "alerta", "critico"]
+ORDEM_FAIXAS_ANA = ["normal", "atencao", "alerta", "inundacao"]
 
 # FAIXAS DE DEFLUÊNCIA (CEMIG) — em m³/s
-# Baseline histórica: ~17 m³/s | Gatilho oficial CEMIG (Qr): 550 m³/s
 FAIXAS_DEFLUENCIA = [
     (550.0, "critico", "🔴", "CRÍTICO · vazão de restrição atingida"),
     (100.0, "alerta", "🟠", "ALERTA · vazão elevada"),
@@ -57,7 +57,6 @@ def classificar_faixa_ana(nivel: float) -> str:
         if faixa["min"] <= nivel <= faixa["max"]:
             return nome
     return "normal"
-
 
 def montar_mensagem_ana(
     nome: str,
@@ -90,13 +89,26 @@ def montar_mensagem_ana(
             "<b>Onda de cheia a caminho de Timóteo.</b>",
             f"Chegada prevista: ~{lag}h ({previsao.strftime('%d/%m %H:%M')} BRT)",
         ]
-    elif lag == 0 and faixa_nova == "critico":
+    elif lag == 0 and faixa_nova == "inundacao":
         linhas += ["", "<b>Cheia em curso no bairro. Ação imediata.</b>"]
-    elif lag == 0 and faixa_nova == "normal":
+    elif lag == 0 and faixa_nova == "normal" and faixa_antiga != "inicial":
         linhas += ["", "Nível retornou à faixa segura."]
 
     return "\n".join(linhas)
 
+def montar_push_ana(faixa_nova: str, faixa_antiga: str, nivel: float, nome: str) -> tuple[str, str]:
+    """Gera o título e corpo do Push Notification para a ANA."""
+    f = FAIXAS_ANA[faixa_nova]
+    titulo = f"{f['emoji']} {f['label']} - {nome}"
+    if faixa_nova == "inundacao":
+        corpo = f"Risco de alagamento! Rio em {nivel:.0f} cm. Evacue áreas de risco."
+    elif faixa_nova == "alerta":
+        corpo = f"Rio em {nivel:.0f} cm. Comece a preparar e retire móveis."
+    elif faixa_nova == "atencao":
+        corpo = f"Rio em {nivel:.0f} cm. Monitore a situação."
+    else:
+        corpo = f"Rio em {nivel:.0f} cm. Nível normalizado."
+    return titulo, corpo
 
 def processar_estacao(codigo: str, nome: str, lag: int) -> bool:
     """Verifica a última leitura de uma estação da ANA e dispara alerta se mudou de faixa."""
@@ -126,9 +138,11 @@ def processar_estacao(codigo: str, nome: str, lag: int) -> bool:
         montar_mensagem_fn=lambda f_nova, f_ant: montar_mensagem_ana(
             nome, f_nova, f_ant, nivel, ts, lag
         ),
+        montar_push_fn=lambda f_nova, f_ant: montar_push_ana(
+            f_nova, f_ant, nivel, nome
+        ),
         cooldown_min=COOLDOWN_MIN,
     )
-
 
 def classificar_defluencia(vazao: float) -> str:
     """Classifica a defluência da UHE Sá Carvalho (m³/s)."""
@@ -137,14 +151,12 @@ def classificar_defluencia(vazao: float) -> str:
             return nome
     return "normal"
 
-
 def _metadados_defluencia(faixa: str) -> tuple[str, str]:
     """Retorna (emoji, label) para uma faixa de defluência da CEMIG."""
     for _, nome, emoji, label in FAIXAS_DEFLUENCIA:
         if nome == faixa:
             return emoji, label
     return "🟢", "NORMAL"
-
 
 def montar_mensagem_cemig(
     faixa_nova: str,
@@ -181,6 +193,12 @@ def montar_mensagem_cemig(
 
     return "\n".join(linhas)
 
+def montar_push_cemig(faixa_nova: str, faixa_antiga: str, vazao: float) -> tuple[str, str]:
+    """Gera o título e corpo do Push Notification para a CEMIG."""
+    emoji, label = _metadados_defluencia(faixa_nova)
+    titulo = f"{emoji} CEMIG: {label.split('·')[0].strip()}"
+    corpo = f"UHE Sá Carvalho liberando {vazao:.0f} m³/s. Chegada em ~4h."
+    return titulo, corpo
 
 def processar_cemig() -> bool:
     """Verifica a última defluência da UHE Sá Carvalho e dispara alerta se mudou de faixa."""
@@ -211,13 +229,15 @@ def processar_cemig() -> bool:
         montar_mensagem_fn=lambda f_nova, f_ant: montar_mensagem_cemig(
             f_nova, f_ant, vazao, ts
         ),
+        montar_push_fn=lambda f_nova, f_ant: montar_push_cemig(
+            f_nova, f_ant, vazao
+        ),
         cooldown_min=COOLDOWN_MIN,
     )
 
-
 def main() -> int:
     validar_env(
-        "SUPABASE_URL", "SUPABASE_KEY", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID"
+        "SUPABASE_URL", "SUPABASE_KEY", "TELEGRAM_TOKEN", "TELEGRAM_CHAT_ID", "PUSH_SECRET"
     )
     obter_supabase()
 
@@ -242,7 +262,6 @@ def main() -> int:
 
     log.info("Fim — %s notificação(ões) enviada(s)", notificacoes)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -94,6 +94,7 @@ def carregar_estacao(
             .order("data_hora")
             .range(offset, offset + page_size - 1)
             .execute()
+            .not_.is_("defluencia_m3s", "null")
         )
         if not resp.data:
             break

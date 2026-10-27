@@ -652,20 +652,16 @@
                                     SAD <span class="text-white">PIRACICABA</span>
                                 </h1>
                                 <div class="flex items-center gap-1.5">
-                                    <span id="statusBadgeMobile" class="bg-green-500/20 text-green-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 leading-none">
-                                        NORMAL
-                                    </span>
-                                    <button onclick="ativarModoDesastre()" title="Testar gatilho"
-                                            class="text-red-400 text-xs p-0.5 rounded leading-none">
-                                        ⚠️
-                                    </button>
-                                    <!-- Botão de ativação de push notifications -->
-                                    <!-- <button id="btnPush" 
-                                            onclick="ativarPushNotifications()"
-                                            class="hidden-notification w-full mb-3 bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded border border-blue-500 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-                                        Ativar notificações
-                                    </button> -->
+                                    <span id="statusBadgeMobile" class="bg-green-500/20 text-green-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 leading-none">NORMAL</span>
+                                    <button onclick="ativarModoDesastre()" title="Testar gatilho" class="text-red-400 text-xs p-0.5 rounded leading-none">⚠️</button>
                                 </div>
+                            </div>
+
+                            <!-- BOTÃO AQUI (Fora da linha flex) -->
+                            <div class="px-3 pb-2 border-b border-white/10">
+                                <button class="btn-push hidden-notification w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded border border-blue-500 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]" onclick="ativarPushNotifications()">
+                                    Ativar notificações
+                                </button>
                             </div>
 
                             <!-- Linha 2: Cota + Defluência resumida + botão detalhes -->
@@ -702,25 +698,20 @@
                             <!-- Seção 1: SAD PIRACICABA -->
                             <div class="p-3.5 border-b border-white/10">
                                 <div class="flex items-center justify-between mb-2">
-                                    <h1 class="text-base font-bold tracking-wider text-blue-400">
-                                        SAD <span class="text-white">PIRACICABA</span>
-                                    </h1>
+                                    <h1 class="text-base font-bold tracking-wider text-blue-400">SAD <span class="text-white">PIRACICABA</span></h1>
                                     <div class="flex items-center gap-1.5">
-                                        <span id="statusBadge" class="bg-green-500/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 transition-colors duration-300">
-                                            NORMAL
-                                        </span>
-                                        <button onclick="ativarModoDesastre()" title="Testar gatilho"
-                                                class="text-red-400 hover:text-red-300 text-xs p-1 rounded border border-red-500/30 hover:border-red-400/60 transition-colors">
-                                            ⚠️
-                                        </button>
-                                        <!-- Botão de ativação de push notifications -->
-                                        <!-- <button id="btnPush" 
-                                                onclick="ativarPushNotifications()"
-                                                class="hidden-notification w-full mb-3 bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded border border-blue-500 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]">
-                                            Ativar notificações
-                                        </button> -->
+                                        <span id="statusBadge" class="bg-green-500/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 transition-colors duration-300">NORMAL</span>
+                                        <button onclick="ativarModoDesastre()" title="Testar gatilho" class="text-red-400 hover:text-red-300 text-xs p-1 rounded border border-red-500/30 hover:border-red-400/60 transition-colors">⚠️</button>
                                     </div>
                                 </div>
+
+                                <!-- BOTÃO AQUI (Fora da linha flex) -->
+                                <div class="mb-2">
+                                    <button class="btn-push hidden-notification w-full bg-blue-600/90 hover:bg-blue-500 text-white text-xs font-bold py-2 px-4 rounded border border-blue-500 transition-colors shadow-[0_0_15px_rgba(59,130,246,0.4)]" onclick="ativarPushNotifications()">
+                                        Ativar notificações
+                                    </button>
+                                </div>
+
 
                                 <div class="flex gap-2">
                                     <div class="flex-1 bg-black/40 px-2 py-2 rounded-lg border border-white/10">
@@ -838,12 +829,12 @@
     </div>
 
 <!-- Botão flutuante: câmera ao vivo -->
-<button id="btnCameraAoVivo"
+<!-- <button id="btnCameraAoVivo"
         onclick="abrirCameraAoVivo()"
         class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-40 left-4 md:bottom-auto md:top-3 md:left-[344px] md:right-auto">
     <span id="btnCameraDot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
     <span class="text-xs md:text-sm font-bold tracking-wider text-white">CLIQUE AQUI PARA VER O RIO AO VIVO</span>
-</button>
+</button> -->
 
     <!-- ========================================== -->
     <!-- TELA 3: PREVISÃO DO TEMPO COMPLETA         -->
@@ -1594,6 +1585,7 @@
             if(notification) {
                 setTimeout(() => { notification.classList.add('hidden-notification'); }, 4000); 
             }
+            setTimeout(atualizarBotaoPush, 1000); 
         });
 
         // 5.5 INICIALIZAÇÃO
@@ -2887,15 +2879,20 @@ function _renderizarModalComparativo() {
         // ==========================================
         const VAPID_PUBLIC_KEY = '28ae1b0cdbdaf424008c6084a95d7f32b85be4fd5e7ec538fbad875d96ac6629';
 
+        // --- FUNÇÕES AUXILIARES (Estavam faltando) ---
+        function pushSuportado() {
+            return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        }
+
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            const rawData = atob(base64);
-            return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
-        }
-
-        function pushSuportado() {
-            return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) {
+                outputArray[i] = rawData.charCodeAt(i);
+            }
+            return outputArray;
         }
 
         async function verificarPushJaAtivo() {
@@ -2909,24 +2906,32 @@ function _renderizarModalComparativo() {
             }
         }
 
+        // --- LÓGICA DO BOTÃO ---
         async function atualizarBotaoPush() {
-            const btn = document.getElementById('btnPush');
-            if (!btn) return;
+            const botoes = document.querySelectorAll('.btn-push');
+            if (botoes.length === 0) return;
 
-            // Não suportado pelo navegador → esconde
             if (!pushSuportado()) {
-                btn.classList.add('hidden-notification');
+                botoes.forEach(btn => btn.classList.add('hidden-notification'));
+                console.log('[PUSH] Navegador não suporta Push.');
                 return;
             }
 
-            // Já ativado → esconde o botão
             if (await verificarPushJaAtivo()) {
-                btn.classList.add('hidden-notification');
+                botoes.forEach(btn => btn.classList.add('hidden-notification'));
+                console.log('[PUSH] Botão escondido: você já está inscrito.');
                 return;
             }
 
-            // Suportado mas ainda não ativado → mostra
-            btn.classList.remove('hidden-notification');
+            if (Notification.permission === 'denied') {
+                botoes.forEach(btn => btn.classList.add('hidden-notification'));
+                console.log('[PUSH] Botão escondido: permissão negada no navegador.');
+                return;
+            }
+
+            // Se passou por tudo, mostra o botão!
+            console.log('[PUSH] Mostrando botão de ativar.');
+            botoes.forEach(btn => btn.classList.remove('hidden-notification'));
         }
 
         async function ativarPushNotifications() {
@@ -2936,23 +2941,18 @@ function _renderizarModalComparativo() {
             }
 
             try {
-                // 1. Pede permissão
                 const permissao = await Notification.requestPermission();
                 if (permissao !== 'granted') {
-                    alert('Você precisa permitir notificações para receber alertas de cheia.');
+                    alert('Você precisa permitir notificações para receber alertas.');
                     return;
                 }
 
-                // 2. Aguarda o SW estar pronto
                 const reg = await navigator.serviceWorker.ready;
-
-                // 3. Cria a subscription
                 const sub = await reg.pushManager.subscribe({
                     userVisibleOnly: true,
                     applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
                 });
 
-                // 4. Envia para o Supabase
                 const subJson = sub.toJSON();
                 const payload = {
                     p_endpoint: subJson.endpoint,
@@ -2971,25 +2971,16 @@ function _renderizarModalComparativo() {
                     body: JSON.stringify(payload),
                 });
 
-                if (!resp.ok) {
-                    const err = await resp.text();
-                    throw new Error(err);
-                }
+                if (!resp.ok) throw new Error(await resp.text());
 
-                // 5. Feedback
-                alert('Notificações ativadas!\n\nVocê receberá avisos de cheia diretamente neste dispositivo.');
-                document.getElementById('btnPush').classList.add('hidden-notification');
+                alert('Notificações ativadas com sucesso!');
+                document.querySelectorAll('.btn-push').forEach(btn => btn.classList.add('hidden-notification'));
 
             } catch (err) {
                 console.error('[PUSH] Erro:', err);
-                alert('Não foi possível ativar as notificações. Tente novamente.');
+                alert('Não foi possível ativar as notificações. Verifique as permissões do site.');
             }
         }
-
-        // Verifica o estado ao carregar a página
-        window.addEventListener('load', () => {
-            setTimeout(atualizarBotaoPush, 1500);  // espera o SW estar pronto
-        });
     </script>
 </body>
 </html>

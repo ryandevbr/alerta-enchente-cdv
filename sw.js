@@ -106,3 +106,45 @@ self.addEventListener('notificationclick', (event) => {
             })
     );
 });
+
+
+// Escuta o evento de Push enviado pelo Supabase
+self.addEventListener('push', function(event) {
+    if (event.data) {
+        const data = event.data.json();
+        
+        const options = {
+            body: data.body,
+            icon: '/logo.png', // Ícone da notificação
+            badge: '/logo.png', // Ícone pequeno (Android)
+            vibrate: [200, 100, 200], // Padrão de vibração
+            data: {
+                url: data.url || '/'
+            }
+        };
+
+        event.waitUntil(
+            self.registration.showNotification(data.title, options)
+        );
+    }
+});
+
+// O que acontece quando o usuário clica na notificação
+self.addEventListener('notificationclick', function(event) {
+    event.notification.close(); // Fecha a notificação
+    
+    // Abre o site (ou foca se já estiver aberto)
+    event.waitUntil(
+        clients.matchAll({ type: 'window' }).then(windowClients => {
+            for (let i = 0; i < windowClients.length; i++) {
+                let client = windowClients[i];
+                if (client.url === event.notification.data.url && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            if (clients.openWindow) {
+                return clients.openWindow(event.notification.data.url);
+            }
+        })
+    );
+});

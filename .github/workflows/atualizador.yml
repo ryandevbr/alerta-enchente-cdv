@@ -3,6 +3,7 @@ name: Atualizador de Dados CDV
 on:
   schedule:
     - cron: '0,15,30,45 * * * *'
+    
 
   workflow_dispatch:
     inputs:
@@ -92,6 +93,12 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python atualizador_cache_site.py
+
+      - name: Gerar Story para Instagram
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python gerar_story.py
 
   enviar-alertas:
     needs: [atualizar-ana, coletar-ana-xml, coletar-cemig]

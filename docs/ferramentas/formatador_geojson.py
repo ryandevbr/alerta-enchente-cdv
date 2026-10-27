@@ -9,7 +9,6 @@ RAIZ = Path(__file__).resolve().parent.parent.parent
 ARQUIVO_PADRAO = RAIZ / "docs" / "manchas_arquivadas" / "exemplo_bruto.geojson"
 COTA_PADRAO = 400
 
-
 def formatar_geojson(texto_json: str, cota: int) -> str:
     """
     Lê uma string GeoJSON (FeatureCollection ou Feature) e devolve os blocos
@@ -48,7 +47,6 @@ def formatar_geojson(texto_json: str, cota: int) -> str:
         resultados.append(bloco_formatado)
 
     return ",\n".join(resultados)
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -89,7 +87,6 @@ def main() -> int:
     print(texto_final)
     print("\n" + "=" * 50)
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

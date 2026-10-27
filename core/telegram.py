@@ -1,4 +1,4 @@
-"""Cliente de notificações Telegram e lógica de transição de faixas/cooldown."""
+"""Cliente de notificações Telegram, Push e lógica de transição de faixas/cooldown."""
 
 import logging
 import os
@@ -43,6 +43,38 @@ def enviar_telegram(
         return True
     except Exception as exc:
         log.error("Erro ao enviar Telegram: %s", exc)
+        return False
+
+
+def enviar_push_notification(titulo: str, mensagem: str) -> bool:
+    """Envia notificação push via Edge Function do Supabase."""
+    url_base = os.getenv("SUPABASE_URL")
+    push_secret = os.getenv("PUSH_SECRET")
+    
+    if not url_base or not push_secret:
+        log.error("SUPABASE_URL ou PUSH_SECRET não configurados para Push.")
+        return False
+        
+    url = f"{url_base}/functions/v1/send-push"
+    headers = {
+        "Authorization": f"Bearer {push_secret}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "title": titulo,
+        "body": mensagem,
+        "url": "https://alertaenchentecdv.app/"
+    }
+    
+    sessao = obter_sessao_http()
+    try:
+        r = sessao.post(url, json=payload, headers=headers, timeout=10)
+        if r.status_code == 200:
+            return True
+        log.error("Push HTTP %s: %s", r.status_code, r.text[:200])
+        return False
+    except Exception as e:
+        log.error("Erro ao enviar push: %s", e)
         return False
 
 
@@ -100,11 +132,14 @@ def processar_transicao_alerta(
     montar_mensagem_fn: Callable[[str, str], str],
     cooldown_min: float = 30.0,
     faixa_neutra: str = "normal",
+    montar_push_fn: Optional[Callable[[str, str], tuple[str, str]]] = None,
 ) -> bool:
     """
     Executa a máquina de estados para alertas por faixa com anti-spam e cooldown.
-    `montar_mensagem_fn(faixa_nova, faixa_antiga)` deve retornar o HTML da mensagem.
-    Retorna True se uma notificação foi enviada ao Telegram.
+    Dispara para o Telegram (HTML) e para o Push (Texto Limpo).
+    `montar_mensagem_fn(faixa_nova, faixa_antiga)` retorna o HTML do Telegram.
+    `montar_push_fn(faixa_nova, faixa_antiga)` retorna uma tupla (titulo, corpo).
+    Retorna True se pelo menos uma notificação foi enviada com sucesso.
     """
     estado = obter_estado_alerta(chave_estado)
     faixa_antiga = estado["ultima_faixa"] if estado else "inicial"
@@ -119,13 +154,30 @@ def processar_transicao_alerta(
         faixa_antiga,
     )
 
+    # Função auxiliar para disparar os dois canais
+    def _disparar_notificacoes(f_antiga: str) -> bool:
+        # 1. Telegram
+        msg_tg = montar_mensagem_fn(faixa_nova, f_antiga)
+        ok_tg = enviar_telegram(msg_tg)
+        
+        # 2. Push Notification
+        if montar_push_fn:
+            titulo_push, corpo_push = montar_push_fn(faixa_nova, f_antiga)
+        else:
+            # Fallback padrão se a função customizada não for passada
+            titulo_push = f"Alerta Enchente CDV"
+            corpo_push = f"{nome_exibicao}: {valor_fmt}{unidade} ({faixa_nova.upper()})"
+        
+        ok_push = enviar_push_notification(titulo_push, corpo_push)
+        
+        return ok_tg or ok_push
+
     # 1. Primeira leitura registrada no sistema
     if estado is None:
         notificar = faixa_nova != faixa_neutra
         enviou = False
         if notificar:
-            msg = montar_mensagem_fn(faixa_nova, "inicial")
-            enviou = enviar_telegram(msg)
+            enviou = _disparar_notificacoes("inicial")
             if enviou:
                 log.info("   Primeira leitura notificada (%s)", faixa_nova)
         gravar_estado_alerta(chave_estado, faixa_nova, valor, enviou)
@@ -147,10 +199,8 @@ def processar_transicao_alerta(
         return False
 
     # 4. Notificação de mudança de faixa
-    msg = montar_mensagem_fn(faixa_nova, faixa_antiga)
-    ok = enviar_telegram(msg)
+    ok = _disparar_notificacoes(faixa_antiga)
     gravar_estado_alerta(chave_estado, faixa_nova, valor, ok)
     if ok:
         log.info("   Notificação enviada: %s → %s", faixa_antiga, faixa_nova)
     return ok
-
