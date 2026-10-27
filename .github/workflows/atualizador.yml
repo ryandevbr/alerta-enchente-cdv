@@ -33,7 +33,6 @@ concurrency:
 jobs:
   atualizar-ana:
     runs-on: ubuntu-latest
-    # Pula se a tarefa for 'story'
     if: ${{ github.event_name == 'schedule' || (inputs.tarefa != 'story' && !inputs.pular_ana) }}
     steps:
       - uses: actions/checkout@v4
@@ -43,6 +42,7 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
       - name: Rodar atualizador ANA (REST)
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -61,6 +61,7 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
       - name: Rodar coletor XML da ANA
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
@@ -118,6 +119,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          PUSH_SECRET: ${{ secrets.PUSH_SECRET }}
         run: python alertas_qualitativos.py
 
   monitor-saude:
@@ -139,12 +141,8 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python monitor_saude.py
 
-  # ==========================================
-  # NOVO JOB INDEPENDENTE (Roda rápido)
-  # ==========================================
   gerar-story:
     runs-on: ubuntu-latest
-    # Roda se a tarefa for 'story' (via botão) ou 'completo' (se você quiser gerar junto no manual)
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.tarefa == 'story' || inputs.tarefa == 'completo') }}
     steps:
       - uses: actions/checkout@v4
