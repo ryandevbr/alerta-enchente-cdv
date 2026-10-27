@@ -8,8 +8,8 @@ from core.db import obter_supabase
 log = configurar_logger("story", formato_data="%H:%M:%S")
 
 # --- ARQUIVOS DE FONTE ---
-FONTE_BOLD = "OpenSans-Bold.ttf"
-FONTE_REGULAR = "OpenSans-Regular.ttf"
+FONTE_BOLD = "assets/OpenSans-Bold.ttf"
+FONTE_REGULAR = "assets/OpenSans-Regular.ttf"
 
 # =========================================================
 # COORDENADAS (X, Y) - AJUSTE AQUI ATÉ FICAR PERFEITO
