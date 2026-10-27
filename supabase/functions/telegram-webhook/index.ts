@@ -103,7 +103,7 @@ async function enviarMenu(chatId: number) {
         text: "<b>Painel de controle — Alerta CDV</b>\n\n" +
               "Escolha o que deseja executar:",
         parse_mode: "HTML",
-        reply_markup: {
+            reply_markup: {
             inline_keyboard: [
                 [{ text: "▶️ Rodar tudo", callback_data: "run_all" }],
                 [
@@ -111,10 +111,8 @@ async function enviarMenu(chatId: number) {
                     { text: "Só CEMIG", callback_data: "run_cemig" },
                 ],
                 [{ text: "Só cache", callback_data: "run_cache" }],
-                {
-                "text": "📸 Postar Story no Instagram",
-                "callback_data": "trigger_story"
-                }
+                // Adicione os colchetes [ ] em volta do botão do story
+                [{ text: "📸 Postar Story no Instagram", callback_data: "trigger_story" }]
             ],
         },
     });
