@@ -48,8 +48,8 @@ async function atualizarMensagem(
 async function dispararWorkflow(
     tipo: string
 ): Promise<{ ok: boolean; erro?: string }> {
-    // Monta os inputs conforme o botão clicado
-    let inputs: Record<string, boolean> = {};
+    // Mudamos para any para aceitar tanto booleanos quanto strings (tarefa)
+    let inputs: Record<string, any> = {};
 
     if (tipo === "run_ana") {
         inputs = { pular_cemig: true, pular_cache: true };
@@ -59,6 +59,8 @@ async function dispararWorkflow(
         inputs = { pular_ana: true, pular_cemig: true };
     } else if (tipo === "run_all") {
         inputs = {}; // tudo false, roda tudo
+    } else if (tipo === "trigger_story") {
+        inputs = { tarefa: "story" }; // <-- O pulo do gato para o story
     } else {
         return { ok: false, erro: "tipo desconhecido" };
     }
@@ -109,6 +111,10 @@ async function enviarMenu(chatId: number) {
                     { text: "Só CEMIG", callback_data: "run_cemig" },
                 ],
                 [{ text: "Só cache", callback_data: "run_cache" }],
+                {
+                "text": "📸 Postar Story no Instagram",
+                "callback_data": "trigger_story"
+                }
             ],
         },
     });
@@ -149,13 +155,15 @@ serve(async (req) => {
         const data = cb.data || "";
 
         // ================= Workflow (botões de trigger) =================
-        if (data.startsWith("run_")) {
+        // Adicionamos o trigger_story na verificação
+        if (data.startsWith("run_") || data === "trigger_story") {
             // Feedback imediato ao usuário
             await telegram("answerCallbackQuery", {
                 callback_query_id: cb.id,
                 text: "⏳ Disparando workflow...",
             });
 
+            // Chama a função corretamente (sem hardcode)
             const resultado = await dispararWorkflow(data);
 
             const nomes: Record<string, string> = {
@@ -163,6 +171,7 @@ serve(async (req) => {
                 run_ana:   "Só ANA",
                 run_cemig: "Só CEMIG",
                 run_cache: "Só cache",
+                trigger_story: "Postar Story no Instagram", // Nome para exibir no sucesso
             };
             const acao = nomes[data] || data;
 
