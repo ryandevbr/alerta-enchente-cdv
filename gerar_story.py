@@ -1,5 +1,6 @@
 import os
 import io
+import requests # <-- Import movido para cá
 from datetime import datetime, timezone
 from PIL import Image, ImageDraw, ImageFont
 from core.config import configurar_logger
@@ -28,7 +29,7 @@ POS_DEFLUENCIA = (430, 1405)
 # =========================================================
 # CONFIGURAÇÃO FINAL
 # =========================================================
-MODO_TESTE = False  # Mude para True se quiser gerar as imagens de teste
+MODO_TESTE = False 
 
 def obter_dados():
     supabase = obter_supabase()
@@ -59,7 +60,6 @@ def obter_anos_comparacao():
     if ano_atual == 2026:
         return [2023, 2021, 2018]
     else:
-        # Para 2027 em diante
         return [2024, 2022, 2019]
 
 def gerar_story_producao():
@@ -70,7 +70,6 @@ def gerar_story_producao():
 
     log.info(f"Gerando story REAL: Nível {nivel}cm | Defluência {defluencia}m³/s")
 
-    # 1. Escolher template
     if nivel < 450: template_path = "template_normal.png"
     elif nivel < 540: template_path = "template_atencao.png"
     elif nivel < 620: template_path = "template_alerta.png"
@@ -91,29 +90,23 @@ def gerar_story_producao():
         log.error("Fontes não encontradas.")
         return
 
-    # 2. Escrever Nível e Comparativo
     draw.text(POS_NIVEL, f"{nivel:.0f} cm", font=font_nivel, fill="white", anchor="mm")
     draw.text(POS_HOJE, f"HOJE: {nivel:.0f}cm", font=font_anos, fill="white", anchor="mm")
     
-    # Pega os anos corretos baseados na data atual (Ex: 2023, 2021, 2018)
     anos_alvo = obter_anos_comparacao()
     
-    # Escreve o primeiro ano (Superior Direito)
     ano1 = anos_alvo[0]
-    valor1 = anos.get(ano1, 0) # Se não achar o ano, coloca 0
+    valor1 = anos.get(ano1, 0)
     draw.text(POS_ANO1, f"{ano1}: {valor1:.0f}cm", font=font_anos, fill="white", anchor="mm")
     
-    # Escreve o segundo ano (Inferior Esquerdo)
     ano2 = anos_alvo[1]
     valor2 = anos.get(ano2, 0)
     draw.text(POS_ANO2, f"{ano2}: {valor2:.0f}cm", font=font_anos, fill="white", anchor="mm")
     
-    # Escreve o terceiro ano (Inferior Direito)
     ano3 = anos_alvo[2]
     valor3 = anos.get(ano3, 0)
     draw.text(POS_ANO3, f"{ano3}: {valor3:.0f}cm", font=font_anos, fill="white", anchor="mm")
 
-    # 3. Escrever Defluência
     cor_def = obter_cor_defluencia(defluencia)
     draw.ellipse([
         POS_DOT_CEMIG[0] - RAIO_DOT, POS_DOT_CEMIG[1] - RAIO_DOT, 
@@ -123,7 +116,6 @@ def gerar_story_producao():
     texto_def = f"Defluência: {defluencia:.0f} m³/s" if defluencia > 0 else "Defluência: --"
     draw.text(POS_DEFLUENCIA, texto_def, font=font_cemig, fill="white", anchor="lm")
 
-    # 4. Upload para o Supabase Storage
     try:
         img_byte_arr = io.BytesIO()
         img.convert("RGB").save(img_byte_arr, format='JPEG', quality=95)
@@ -131,19 +123,16 @@ def gerar_story_producao():
 
         nome_arquivo = "ultimo_story.jpg"
         
-        # Faz o upload (upsert para sobrescrever a imagem anterior)
         supabase.storage.from_("stories").upload(
             file=img_byte_arr.read(),
             path=nome_arquivo,
             file_options={"content-type": "image/jpeg", "upsert": "true"}
         )
         
-        # Pega a URL pública com cache buster
         url_publica_base = supabase.storage.from_("stories").get_public_url(nome_arquivo)
         ts = int(datetime.now().timestamp())
         url_final = f"{url_publica_base}?t={ts}"
 
-        # Salva no cache_site para o MacroDroid ler
         supabase.table("cache_site").upsert({
             "chave": "story_atual",
             "dados": {"url": url_final, "gerado_em": datetime.now(timezone.utc).isoformat()},
@@ -151,24 +140,25 @@ def gerar_story_producao():
         }, on_conflict="chave").execute()
 
         log.info(f"✅ Story gerado e enviado! URL: {url_final}")
-        
-    except Exception as e:
-        log.error(f"Erro no upload para o Supabase: {e}")
 
-        # Avisar o Telegram que a imagem está pronta
-        import requests
+        # --- AQUI ESTÁ A CORREÇÃO: Enviar Telegram FORA do except ---
         TOKEN = os.getenv("TELEGRAM_TOKEN")
         CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
         
         if TOKEN and CHAT_ID:
             requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                json={"chat_id": CHAT_ID, "text": "Story gerado!"}
+                json={"chat_id": CHAT_ID, "text": "Story gerado e pronto!"}
             )
+            log.info("Notificação enviada ao Telegram.")
+        else:
+            log.warning("TELEGRAM_TOKEN ou TELEGRAM_CHAT_ID não encontrados no .env")
+        
+    except Exception as e:
+        log.error(f"Erro no upload para o Supabase: {e}")
 
 if __name__ == "__main__":
     if MODO_TESTE:
         log.info("Modo de teste ativado.")
-        # Você pode rodar a função de testes aqui se quiser.
     else:
         gerar_story_producao()
