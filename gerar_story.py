@@ -155,6 +155,17 @@ def gerar_story_producao():
     except Exception as e:
         log.error(f"Erro no upload para o Supabase: {e}")
 
+        # Avisar o Telegram que a imagem está pronta
+        import requests
+        TOKEN = os.getenv("TELEGRAM_TOKEN")
+        CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+        
+        if TOKEN and CHAT_ID:
+            requests.post(
+                f"https://api.telegram.org/bot{TOKEN}/sendMessage",
+                json={"chat_id": CHAT_ID, "text": "Story gerado!"}
+            )
+
 if __name__ == "__main__":
     if MODO_TESTE:
         log.info("Modo de teste ativado.")
