@@ -141,7 +141,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python monitor_saude.py
 
-    gerar-story:
+  gerar-story:
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.tarefa == 'story' || inputs.tarefa == 'completo') }}
     steps:
