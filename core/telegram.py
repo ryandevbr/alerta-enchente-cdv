@@ -4,7 +4,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
-
+import requests
 from core.ana_client import obter_sessao_http
 from core.db import gravar_estado_alerta, obter_estado_alerta, parse_iso_utc
 
@@ -46,33 +46,31 @@ def enviar_telegram(
         return False
 
 
-def enviar_push_notification(titulo: str, mensagem: str) -> bool:
-    """Envia notificação push via Edge Function do Supabase."""
-    url_base = os.getenv("SUPABASE_URL")
+def enviar_push(titulo: str, corpo: str, url: str = "https://alertaenchentecdv.app") -> bool:
+    """Envia uma notificação push via Edge Function do Supabase."""
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
     push_secret = os.getenv("PUSH_SECRET")
     
-    if not url_base or not push_secret:
-        log.error("SUPABASE_URL ou PUSH_SECRET não configurados para Push.")
+    if not all([supabase_url, supabase_key, push_secret]):
+        log.warning("Variáveis de Push (SUPABASE_URL, SUPABASE_KEY ou PUSH_SECRET) ausentes.")
         return False
         
-    url = f"{url_base}/functions/v1/send-push"
-    headers = {
-        "Authorization": f"Bearer {push_secret}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "title": titulo,
-        "body": mensagem,
-        "url": "https://alertaenchentecdv.app/"
-    }
-    
-    sessao = obter_sessao_http()
     try:
-        r = sessao.post(url, json=payload, headers=headers, timeout=10)
-        if r.status_code == 200:
-            return True
-        log.error("Push HTTP %s: %s", r.status_code, r.text[:200])
-        return False
+        r = requests.post(
+            f"{supabase_url}/functions/v1/send-push",
+            headers={
+                "Content-Type": "application/json; charset=utf-8",
+                "Authorization": f"Bearer {supabase_key}",
+                "X-Push-Secret": push_secret
+            },
+            json={"titulo": titulo, "corpo": corpo, "url": url},
+            timeout=10
+        )
+        if r.status_code != 200:
+            log.error("Push HTTP %s: %s", r.status_code, r.text[:200])
+            return False
+        return True
     except Exception as e:
         log.error("Erro ao enviar push: %s", e)
         return False
@@ -168,7 +166,8 @@ def processar_transicao_alerta(
             titulo_push = f"Alerta Enchente CDV"
             corpo_push = f"{nome_exibicao}: {valor_fmt}{unidade} ({faixa_nova.upper()})"
         
-        ok_push = enviar_push_notification(titulo_push, corpo_push)
+        # CORREÇÃO AQUI: Chamar 'enviar_push' e não 'enviar_push_notification'
+        ok_push = enviar_push(titulo_push, corpo_push)
         
         return ok_tg or ok_push
 
