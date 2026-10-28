@@ -35,3 +35,6 @@ package-lock.json
 
 baixar_dem.py
 dados_dem/
+
+# Saídas de teste do gerador de story
+story_gerado_*.jpg
