@@ -50,7 +50,7 @@ def obter_status_atual(client: Optional[Client] = None) -> Optional[dict[str, An
         "cemig_atualizado_em": None,
     }
 
-    leitura_cemig = obter_ultima_leitura_cemig(client=db)
+    leitura_cemig = obter_ultima_leitura_cemig(apenas_com_defluencia=True, client=db)
     if leitura_cemig:
         status["defluencia_cemig"] = leitura_cemig.get("defluencia_m3s")
         status["afluencia_cemig"] = leitura_cemig.get("afluencia_m3s")

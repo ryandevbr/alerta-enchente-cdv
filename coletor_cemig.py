@@ -84,15 +84,18 @@ def coletar_dados_cemig() -> Optional[dict[str, Any]]:
 
         try:
             page.goto(URL_CEMIG, wait_until="networkidle", timeout=90000)
-
             page.wait_for_function(
                 """() => {
-                    const el = document.getElementById('nivel_atual_valor');
-                    return el && el.innerText && el.innerText.trim().length > 0;
+                    const nivel = document.getElementById('nivel_atual_valor');
+                    const afluencia = document.getElementById('afluencia_valor');
+                    const defluencia = document.getElementById('defluencia_valor');
+                    return nivel && nivel.innerText.trim().length > 0 &&
+                           afluencia && afluencia.innerText.trim().length > 0 &&
+                           defluencia && defluencia.innerText.trim().length > 0;
                 }""",
                 timeout=60000,
             )
-            page.wait_for_timeout(2000)
+            page.wait_for_timeout(3000) # Dá 3 segundos extras de segurança
 
             dados: dict[str, Any] = {}
             for chave, id_el in IDS_VALORES.items():
