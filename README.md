@@ -60,7 +60,9 @@ Sistema em operação desde setembro de 2026. Todas as funcionalidades principai
 - Dashboard de métricas de engajamento
 - Comparativo histórico e gráfico de defluência
 - Progressive Web App (instalável)
-- Câmera ao vivo integrada (VPS próprio com WebRTC e baixa latência)
+- Push Notifications (Web Push / PWA)
+- Câmera ao vivo (WebRTC via VPS próprio)
+- Gerador automático de artes para Instagram Stories
 - Monitoramento de temperatura do equipamento em tempo real
 
 Itens pendentes:
@@ -142,12 +144,15 @@ O sistema também monitora a defluência da UHE Sá Carvalho. Quando a CEMIG abr
 
 | Camada | Tecnologia |
 |--------|------------|
-| Backend de dados | Supabase (PostgreSQL + Realtime + Auth + Edge Functions) |
+| Backend de dados | Supabase (PostgreSQL + Realtime + Auth + Edge Functions + Storage) |
 | Frontend | HTML, Tailwind CSS, JavaScript puro |
 | Mapas | Mapbox GL JS |
 | Gráficos | Chart.js |
+| Streaming de Vídeo | MediaMTX (VPS) + WebRTC |
+| Geração de Imagens | Python (Pillow) |
+| Automação Mobile | MacroDroid + RustDesk |
 | Automação | GitHub Actions |
-| Notificações | Telegram Bot API |
+| Notificações | Telegram Bot API + Web Push (VAPID) |
 | Hospedagem do site | Vercel |
 | Scraping CEMIG | Playwright |
 
@@ -158,23 +163,41 @@ O sistema também monitora a defluência da UHE Sá Carvalho. Quando a CEMIG abr
 ```
 Alerta Enchente - CDV/
 ├── .github/workflows/          Automação no GitHub Actions
+├── core/                       Pacote de lógica compartilhada (auditado)
+│   ├── config.py               Variáveis de ambiente, constantes e logs
+│   ├── db.py                   Cliente Supabase e queries de banco
+│   ├── ana_client.py           Cliente de API e parsers da ANA
+│   ├── telegram.py             Notificações (Telegram e Push Web)
+│   └── cache_builders.py       Cálculo do cache do site (onda, comparativo)
 ├── docs/
 │   ├── DOCUMENTACAO.md         Documentação técnica completa
 │   ├── estudos/                Scripts de análise hidrológica
 │   ├── ferramentas/            Utilitários manuais
 │   └── imagens/                Screenshots para o README
 ├── supabase/functions/         Edge Functions (Telegram, push)
-├── atualizador_tempo_real.py   Ingestão de dados da ANA
-├── coletor_cemig.py            Coleta de dados da CEMIG
+├── assets/                     Fontes (OpenSans) para geração de imagens
+├── atualizador_tempo_real.py   Ingestão de dados da ANA (REST)
+├── coletor_ana_xml.py          Ingestão de dados da ANA (XML fallback)
+├── coletor_cemig.py            Coleta de dados da CEMIG (Playwright)
 ├── atualizador_cache_site.py   Cálculo do cache consumido pelo site
-├── alertas_qualitativos.py     Alertas por faixa de cota
+├── alertas_qualitativos.py     Alertas por faixa de cota e defluência
 ├── monitor_saude.py            Monitoramento de saúde do pipeline
+├── gerar_manchas.py            Gera as manchas de inundação (QGIS/Python)
+├── gerar_story.py              Gera as artes para o Instagram Stories
 ├── index_base.html             Template do site público
 ├── moderacao.html              Painel de moderação
+├── build.js                    Script de build (injeta chaves no HTML)
+├── package.json                Dependências do frontend/build
 ├── manifest.json               Configuração PWA
-├── sw.js                       Service Worker
-├── requirements.txt            Dependências Python
+├── sw.js                       Service Worker (cache e push)
+├── template_normal.png         Template base para story (Azul)
+├── template_atencao.png        Template base para story (Amarelo)
+├── template_alerta.png         Template base para story (Laranja)
+├── template_inundacao.png      Template base para story (Vermelho)
+├── manchas_inundacao.geojson   Polígonos gerados para o mapa 3D
+├── requirements.txt            Dependências Python do backend
 ├── .env.example                Modelo de variáveis de ambiente
+├── .gitignore                  Arquivos ignorados pelo Git
 └── README.md
 ```
 

@@ -2,8 +2,8 @@
 
 ## Documentacao Tecnica — Sistema de Apoio à Decisão
 
-**Versao:** 4.1
-**Data:** 20 de outubro de 2026
+**Versao:** 5.0
+**Data:** 28 de outubro de 2026
 **Autor:** Ryan Lucas de Freitas Martins (ryandevbr)
 **Projeto:** Sistema de Alerta Antecipado de Cheias do Rio Piracicaba
 **Localidade:** Cachoeira do Vale, Timoteo (MG)
@@ -433,6 +433,27 @@ O sistema conta com uma câmera física instalada na margem do rio, transmitindo
 
 **Telemetria:** A cada 15 minutos, o MacroDroid lê os sensores do Android (CPU, GPU e Câmera) e envia para a chave `camera_temp` no `cache_site`. O frontend exibe esses dados no modal da câmera.
 
+### 6.5 Câmera ao Vivo e Hardware (O Projeto Físico)
+
+O sistema conta com uma câmera física instalada na margem do rio, operando 24/7 de forma autônoma.
+
+**Arquitetura de Vídeo:**
+- **Hardware:** Celular Android (Redmi Note 11) adaptado sem bateria, alimentado por uma fonte step-down ajustada para 4.2V.
+- **Software de Captura:** IRL Pro.
+- **Servidor:** VPS próprio rodando MediaMTX.
+- **Protocolo:** O celular envia RTMP para o VPS. O VPS converte para WebRTC (latência < 1s), e o site consome esse stream via iframe seguro.
+
+**Adaptação Elétrica (Bypass de Bateria):**
+- A célula de lítio foi removida.
+- A placa BMS original foi mantida.
+- Um resistor de 10kΩ foi soldado no pino NTC (TP1) para enganar o sistema de temperatura.
+- A energia vem de um Step-Down ajustado em 4.2V, estabilizado por um capacitor de 1000µF.
+
+**Automação e Resiliência (MacroDroid):**
+- O aplicativo MacroDroid gerencia o celular.
+- Ao receber energia, ele liga o RustDesk (para acesso remoto), abre o IRL Pro e inicia a transmissão.
+- O celular envia a temperatura da CPU, GPU e Câmera a cada 15 minutos para o Supabase (chave `camera_temp`).
+
 ---
 
 ## 7. Banco de Dados
@@ -560,6 +581,15 @@ matplotlib>=3.8.0
 scikit-learn>=1.4.0
 playwright>=1.45.0
 ```
+### 8.4 gerar_story.py (Automação do Instagram)
+
+Script executado sob demanda (via botão no Telegram ou GitHub Actions).
+1. Consulta os dados atuais de nível e defluência no Supabase.
+2. Seleciona um template PNG base (Azul, Amarelo, Laranja ou Vermelho).
+3. Utiliza a biblioteca `Pillow` para desenhar os textos (nível, comparativo de anos de enchente e defluência) sobre a imagem.
+4. Salva a imagem final no Supabase Storage.
+5. Envia uma notificação no Telegram avisando que a arte está pronta.
+O celular do projeto (Moto G7 Play) detecta essa notificação via MacroDroid, baixa a imagem e posta no Instagram Stories.
 
 ---
 
@@ -755,6 +785,15 @@ Essa medida cumpre três objetivos:
 3. Reforço ao usuário sobre o canal correto em situações de emergência real
 
 O texto completo do aviso está disponível na aba "Entenda" do site público e no rodapé de todas as páginas.
+
+### 12.5 Push Notifications (PWA)
+
+O sistema permite que usuários instalem o site como PWA e recebam alertas nativos no celular, mesmo com o site fechado.
+
+- **Frontend:** O usuário clica em "Ativar notificações". A chave pública VAPID é usada para criar uma inscrição.
+- **Banco:** A inscrição (endpoint, p256dh, auth) é salva na tabela `push_subscriptions`.
+- **Backend:** Quando o rio muda de faixa (ex: Normal → Atenção), a função `processar_transicao_alerta` em `core/telegram.py` chama a Edge Function `send-push`.
+- **Edge Function:** Autenticada via header `X-Push-Secret`, ela varre a tabela de inscrições e envia a notificação usando Web Push. Inscrições mortas (erro 404/410) são desativadas automaticamente.
 
 ---
 
