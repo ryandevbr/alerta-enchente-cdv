@@ -105,14 +105,14 @@ async function enviarMenu(chatId: number) {
         parse_mode: "HTML",
             reply_markup: {
             inline_keyboard: [
-                [{ text: "▶️ Rodar tudo", callback_data: "run_all" }],
+                [{ text: "Rodar tudo", callback_data: "run_all" }],
                 [
                     { text: "Só ANA",   callback_data: "run_ana" },
                     { text: "Só CEMIG", callback_data: "run_cemig" },
                 ],
                 [{ text: "Só cache", callback_data: "run_cache" }],
                 // Adicione os colchetes [ ] em volta do botão do story
-                [{ text: "📸 Postar Story no Instagram", callback_data: "trigger_story" }]
+                [{ text: "Postar Story no Instagram", callback_data: "trigger_story" }]
             ],
         },
     });
@@ -187,10 +187,12 @@ serve(async (req) => {
                 parse_mode: "HTML",
                 disable_web_page_preview: true,
                 reply_markup: {
-                    inline_keyboard: [[
-                        { text: "🔄 Novo comando", callback_data: "menu_reset" }
-                    ]],
-                },
+                    inline_keyboard: [
+                        [{ text: 'Rodar tudo', callback_data: 'rodar_tudo' }],
+                        [{ text: 'Só ANA', callback_data: 'rodar_ana' }, { text: 'Só CEMIG', callback_data: 'rodar_cemig' }],
+                        [{ text: 'Postar Story no Instagram', callback_data: 'trigger_story' }] // <-- ADICIONE ESTA LINHA
+                    ]
+                }
             });
 
             return new Response("ok");
