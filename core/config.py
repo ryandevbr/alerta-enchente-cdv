@@ -48,7 +48,7 @@ ESTACOES_ANA_ALERTA: list[tuple[str, str, int]] = [
 ]
 
 # Endereço do servidor MediaMTX (câmera ao vivo no VPS)
-VPS_IP = os.getenv("VPS_IP", "151.244.40.209")
+VPS_IP = os.getenv("VPS_IP", "82.27.38.143")
 VPS_CAMERA_URL = os.getenv(
     "VPS_CAMERA_URL",
     f"http://{VPS_IP}:9997/v3/paths/list",
