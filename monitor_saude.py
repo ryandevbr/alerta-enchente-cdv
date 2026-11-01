@@ -7,7 +7,7 @@
 
 import sys
 from typing import Any, Callable, Optional
-
+from datetime import datetime, timezone
 from core.config import (
     COD_NOVA_ERA,
     COD_TIMOTEO,
@@ -66,35 +66,47 @@ def _idade_de_cache() -> tuple[Optional[float], Optional[str]]:
     return None, None
 
 
-def _idade_da_camera() -> tuple[Optional[float], Optional[str]]:
-    """
-    Retorna (idade_ficticia, ts_iso) para a câmera ao vivo:
-      - Câmera online  → (0, verificado_em)    → faixa 'ok'
-      - Câmera offline → (9999, verificado_em) → faixa 'parado'
-    """
-    supabase = obter_supabase()
+def _idade_da_camera():
     try:
-        resp = (
-            supabase.table("cache_site")
-            .select("dados,atualizado_em")
-            .eq("chave", "camera_status")
-            .limit(1)
-            .execute()
-        )
-    except Exception as exc:
-        log.error("Erro ao ler camera_status: %s", exc)
+        # 1. Importa e obtém a conexão com o Supabase (resolve o erro do 'supabase' não definido)
+        from core.db import obter_supabase
+        supabase = obter_supabase()
+
+        # 2. Vê o status atual da câmera
+        r = (supabase.table("cache_site")
+             .select("dados")
+             .eq("chave", "camera_status")
+             .limit(1)
+             .execute())
+        
+        if not r.data:
+            return None, None
+            
+        ao_vivo = r.data[0]["dados"].get("ao_vivo", False)
+        
+        if ao_vivo:
+            # Se está ao vivo, a idade é 0
+            return 0, datetime.now(timezone.utc).isoformat()
+            
+        # 3. Se está offline, busca na tabela de estado quando o alerta de queda foi disparado
+        r_estado = (supabase.table("alertas_estado")
+                    .select("notificado_em")
+                    .eq("estacao", "saude_camera")
+                    .execute())
+        
+        if r_estado.data and r_estado.data[0].get("notificado_em"):
+            ts = r_estado.data[0]["notificado_em"]
+            # Calcula a idade aqui mesmo (resolve o erro do '_idade_desde' não definido)
+            dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            idade_min = (datetime.now(timezone.utc) - dt).total_seconds() / 60
+            return round(idade_min, 1), ts
+            
+        # Se não achou o estado (ex: primeira vez rodando), usa o sentinela
+        return 9999, datetime.now(timezone.utc).isoformat()
+        
+    except Exception as e:
+        log.error(f"Erro ao ler camera_status: {e}")
         return None, None
-
-    if not resp.data:
-        log.warning("camera_status ausente no cache")
-        return None, None
-
-    row = resp.data[0]
-    dados = row.get("dados") or {}
-    ao_vivo = bool(dados.get("ao_vivo", False))
-    verificado_em = dados.get("verificado_em") or row.get("atualizado_em")
-
-    return (0.0 if ao_vivo else 9999.0), verificado_em
 
 
 CHECKS: list[tuple[str, str, Callable[..., tuple[Optional[float], Optional[str]]], tuple[Any, ...], float]] = [
