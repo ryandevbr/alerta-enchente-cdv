@@ -25,6 +25,7 @@ POS_ANO3 = (750, 1150)       # Quadrante inferior direito
 POS_DOT_CEMIG = (390, 1403)  
 RAIO_DOT = 28                
 POS_DEFLUENCIA = (430, 1405) 
+POS_DATA_HORA = (540, 1520) 
 
 # =========================================================
 # CONFIGURAÇÃO FINAL
@@ -115,6 +116,13 @@ def gerar_story_producao():
     
     texto_def = f"Defluência: {defluencia:.0f} m³/s" if defluencia > 0 else "Defluência: --"
     draw.text(POS_DEFLUENCIA, texto_def, font=font_cemig, fill="white", anchor="lm")
+
+    
+    agora = datetime.now()
+    data_hora_str = agora.strftime("%d/%m/%Y às %H:%M")
+    
+    # Desenha a data/hora centralizada (usando a fonte menor, font_cemig)
+    draw.text(POS_DATA_HORA, data_hora_str, font=font_cemig, fill="#94a3b8", anchor="mm")
 
     try:
         img_byte_arr = io.BytesIO()
