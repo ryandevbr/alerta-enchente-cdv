@@ -27,6 +27,8 @@ E entrega o resultado em três canais:
 - Bot do Telegram com alertas automáticos
 - Painel web para moderação do chat e acompanhamento de métricas
 
+Além do site, o projeto conta com uma **câmera física instalada na margem do rio** (transmitindo 24/7 via WebRTC com baixa latência) e um **robô de automação no Telegram** que gera artes gráficas com os dados do rio e as publica automaticamente no Instagram Stories, mantendo a comunidade informada de forma visual.
+
 ---
 
 ## Impacto social
@@ -62,12 +64,10 @@ Sistema em operação desde setembro de 2026. Todas as funcionalidades principai
 - Progressive Web App (instalável)
 - Push Notifications (Web Push / PWA)
 - Câmera ao vivo (WebRTC via VPS próprio)
-- Gerador automático de artes para Instagram Stories
 - Monitoramento de temperatura do equipamento em tempo real
-
-Itens pendentes:
-
-- Finalização da infraestrutura de push notifications no navegador
+- Bypass de bateria para câmera 24/7 (Hardware customizado)
+- Geração de artes para Instagram Stories (Python + Pillow)
+- Automação de postagem no Instagram (MacroDroid)
 
 ---
 

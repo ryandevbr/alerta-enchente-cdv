@@ -2,8 +2,8 @@
 
 ## Documentacao Tecnica — Sistema de Apoio à Decisão
 
-**Versao:** 5.0
-**Data:** 28 de outubro de 2026
+**Versao:** 5.1
+**Data:** 02 de novembro de 2026
 **Autor:** Ryan Lucas de Freitas Martins (ryandevbr)
 **Projeto:** Sistema de Alerta Antecipado de Cheias do Rio Piracicaba
 **Localidade:** Cachoeira do Vale, Timoteo (MG)
@@ -433,26 +433,29 @@ O sistema conta com uma câmera física instalada na margem do rio, transmitindo
 
 **Telemetria:** A cada 15 minutos, o MacroDroid lê os sensores do Android (CPU, GPU e Câmera) e envia para a chave `camera_temp` no `cache_site`. O frontend exibe esses dados no modal da câmera.
 
-### 6.5 Câmera ao Vivo e Hardware (O Projeto Físico)
+### 6.5 Infraestrutura Física (Câmera e Automação)
 
-O sistema conta com uma câmera física instalada na margem do rio, operando 24/7 de forma autônoma.
+O projeto utiliza dois dispositivos móveis distintos: um atua como câmera de transmissão 24/7 e o outro como robô de postagem no Instagram.
+
+#### A) O Celular-Câmera (Redmi Note 11)
+Para operar 24 horas por dia na margem do rio sem risco de superaquecimento ou explosão da bateria, o aparelho passou por uma adaptação elétrica (Bypass de Bateria):
+- A célula de lítio foi removida fisicamente.
+- A placa BMS original foi mantida e é alimentada por um conversor Step-Down, ajustado para 4.2V e estabilizado por um capacitor de 1000µF.
+- Um resistor de 10kΩ foi soldado no pino NTC (TP1) da BMS para enganar o sistema de temperatura e permitir o boot.
+- **Auto-Boot:** Um Módulo Relé Temporizador (modo P2) foi conectado aos contatos do botão Power. Quando a energia elétrica retorna, o relé simula um toque físico após 5 segundos, ligando o celular automaticamente.
 
 **Arquitetura de Vídeo:**
-- **Hardware:** Celular Android (Redmi Note 11) adaptado sem bateria, alimentado por uma fonte step-down ajustada para 4.2V.
-- **Software de Captura:** IRL Pro.
-- **Servidor:** VPS próprio rodando MediaMTX.
-- **Protocolo:** O celular envia RTMP para o VPS. O VPS converte para WebRTC (latência < 1s), e o site consome esse stream via iframe seguro.
+- O aplicativo IRL Pro captura a imagem e envia via RTMP para um VPS próprio rodando MediaMTX.
+- O MediaMTX converte o sinal para WebRTC (latência < 1s), e o site consome esse stream via iframe seguro.
 
-**Adaptação Elétrica (Bypass de Bateria):**
-- A célula de lítio foi removida.
-- A placa BMS original foi mantida.
-- Um resistor de 10kΩ foi soldado no pino NTC (TP1) para enganar o sistema de temperatura.
-- A energia vem de um Step-Down ajustado em 4.2V, estabilizado por um capacitor de 1000µF.
+**Automação no Aparelho:**
+- O MacroDroid gerencia o celular: ao ligar, ele abre o RustDesk (acesso remoto), inicia o IRL Pro e envia a temperatura da CPU, GPU e Câmera para o Supabase (chave `camera_temp`) a cada 15 minutos.
 
-**Automação e Resiliência (MacroDroid):**
-- O aplicativo MacroDroid gerencia o celular.
-- Ao receber energia, ele liga o RustDesk (para acesso remoto), abre o IRL Pro e inicia a transmissão.
-- O celular envia a temperatura da CPU, GPU e Câmera a cada 15 minutos para o Supabase (chave `camera_temp`).
+#### B) O Robô do Instagram (Moto G7 Play)
+Um segundo celular fica dedicado exclusivamente a publicar os avisos visuais no Instagram Stories.
+- **Gatilho:** O celular monitora o app do Telegram. Quando o servidor gera uma nova arte e envia a mensagem "Story gerado", o MacroDroid é acionado.
+- **Download:** O app baixa a imagem do Supabase Storage (usando nomes de arquivos únicos para evitar cache).
+- **Postagem:** Através da ferramenta "Interação de UI" do MacroDroid, o celular abre o Instagram, seleciona a imagem baixada e publica no Stories automaticamente.
 
 ---
 
@@ -788,12 +791,8 @@ O texto completo do aviso está disponível na aba "Entenda" do site público e 
 
 ### 12.5 Push Notifications (PWA)
 
-O sistema permite que usuários instalem o site como PWA e recebam alertas nativos no celular, mesmo com o site fechado.
-
-- **Frontend:** O usuário clica em "Ativar notificações". A chave pública VAPID é usada para criar uma inscrição.
-- **Banco:** A inscrição (endpoint, p256dh, auth) é salva na tabela `push_subscriptions`.
-- **Backend:** Quando o rio muda de faixa (ex: Normal → Atenção), a função `processar_transicao_alerta` em `core/telegram.py` chama a Edge Function `send-push`.
-- **Edge Function:** Autenticada via header `X-Push-Secret`, ela varre a tabela de inscrições e envia a notificação usando Web Push. Inscrições mortas (erro 404/410) são desativadas automaticamente.
+O sistema possui envio de Push Notifications nativo. A chave VAPID pública fica no frontend e a privada nos Secrets da Edge Function `send-push`.
+Quando uma faixa de alerta muda, a função `processar_transicao_alerta` em `core/telegram.py` aciona o Telegram e a Edge Function, que envia o push para todos os navegadores inscritos na tabela `push_subscriptions`.
 
 ---
 
