@@ -1,7 +1,8 @@
 import os
 import io
-import requests # <-- Import movido para cá
+import requests 
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from PIL import Image, ImageDraw, ImageFont
 from core.config import configurar_logger
 from core.db import obter_supabase
@@ -118,11 +119,12 @@ def gerar_story_producao():
     draw.text(POS_DEFLUENCIA, texto_def, font=font_cemig, fill="white", anchor="lm")
 
     
-    agora = datetime.now()
+    # Pega a hora atual no fuso de Brasília
+    agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
     data_hora_str = agora.strftime("%d/%m/%Y às %H:%M")
     
-    # Desenha a data/hora centralizada (usando a fonte menor, font_cemig)
     draw.text(POS_DATA_HORA, data_hora_str, font=font_cemig, fill="#94a3b8", anchor="mm")
+    # =======================================
 
     try:
         img_byte_arr = io.BytesIO()
