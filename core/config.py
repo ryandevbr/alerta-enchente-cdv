@@ -25,7 +25,7 @@ COD_SA_CARVALHO = "56688080"  # Sá Carvalho Barramento (proxy operacional)
 # O estudo hidrológico concluiu que a mediana real é 10h, mas o frontend
 # atual está com slider max=9 (rótulo "+9h Lido em Nova Era"). Enquanto
 # o HTML não for atualizado, manter este valor em sincronia com o slider.
-LAG_HORAS = 9
+LAG_HORAS = 3
 
 # Conjuntos de estações por contexto operacional
 ESTACOES_ANA_COMPLETAS: list[str] = [
