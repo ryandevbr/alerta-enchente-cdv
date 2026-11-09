@@ -67,8 +67,7 @@ def construir_onda_desfasada(
 ) -> Optional[dict[int, float]]:
     """
     Monta a projeção do nível do rio em Timóteo para as próximas 3 horas,
-    baseada na defluência atual da barragem CEMIG.
-    Fórmula baseada no estudo de correlação (55.5 cm a cada 100 m³/s).
+    baseada na tendência da defluência da barragem CEMIG nas últimas 12 horas.
     """
     if nivel_timoteo_atual is None:
         log.warning("Nível de Timóteo indisponível. Projeção não calculada.")
@@ -77,53 +76,49 @@ def construir_onda_desfasada(
     db = client or obter_supabase()
 
     try:
-        # Pega as duas últimas leituras da CEMIG para calcular o Delta
+        # Pega as leituras das últimas 12 horas da CEMIG
+        agora = datetime.now(timezone.utc)
+        doze_horas_atras = agora - timedelta(hours=12)
+        
         resp = (
             db.table("historico_cemig")
             .select("defluencia_m3s")
             .not_.is_("defluencia_m3s", "null")
+            .gte("data_hora", doze_horas_atras.isoformat())
             .order("data_hora", desc=True)
-            .limit(2)
             .execute()
         )
 
-        # Se não houver pelo menos 2 leituras, não conseguimos calcular o delta.
-        # Retorna uma linha reta com o nível atual.
         if not resp.data or len(resp.data) < 2:
-            log.warning("Sem dados suficientes da CEMIG. Projeção plana.")
+            log.warning("Sem dados suficientes da CEMIG para calcular tendência.")
             return {
                 1: round(nivel_timoteo_atual, 1), 
                 2: round(nivel_timoteo_atual, 1), 
                 3: round(nivel_timoteo_atual, 1)
             }
 
+        # O valor atual é o mais recente. A referência é o MAIOR valor das últimas 12h.
         vazao_atual = float(resp.data[0]["defluencia_m3s"])
-        vazao_anterior = float(resp.data[1]["defluencia_m3s"])
+        vazao_pico = max(float(item["defluencia_m3s"]) for item in resp.data)
         
-        delta_vazao = vazao_atual - vazao_anterior
-        FATOR_SUBIDA = 0.555 # 55.5 cm para cada 100 m³/s
+        delta_vazao = vazao_atual - vazao_pico
+        FATOR_IMPACTO = 0.555
 
-        # Se a vazão estiver caindo ou estável, a projeção é o nível atual mantido
-        if delta_vazao <= 0:
-            return {
-                1: round(nivel_timoteo_atual, 1), 
-                2: round(nivel_timoteo_atual, 1), 
-                3: round(nivel_timoteo_atual, 1)
-            }
-
-        # Calcula a subida total baseada na variação da vazão
-        subida_total_estimada = delta_vazao * FATOR_SUBIDA
+        impacto_total_estimado = delta_vazao * FATOR_IMPACTO
         
-        # Distribui a subida ao longo das 3 horas (curva de chegada progressiva)
+        # Distribui o impacto nas 3 horas
         onda = {
-            1: round(nivel_timoteo_atual + (subida_total_estimada * (1/3)), 1),
-            2: round(nivel_timoteo_atual + (subida_total_estimada * (2/3)), 1),
-            3: round(nivel_timoteo_atual + subida_total_estimada, 1)
+            1: round(nivel_timoteo_atual + (impacto_total_estimado * (1/3)), 1),
+            2: round(nivel_timoteo_atual + (impacto_total_estimado * (2/3)), 1),
+            3: round(nivel_timoteo_atual + impacto_total_estimado, 1)
         }
         
+        for h in onda:
+            if onda[h] < 0: onda[h] = 0.0
+
         log.info(
-            "Projeção CEMIG: Delta Vazão = %.1f m³/s | Subida estimada = %.1f cm", 
-            delta_vazao, subida_total_estimada
+            "Projeção CEMIG: Atual %.1f m³/s | Pico 12h %.1f m³/s | Impacto = %+.1f cm", 
+            vazao_atual, vazao_pico, impacto_total_estimado
         )
         return onda
 

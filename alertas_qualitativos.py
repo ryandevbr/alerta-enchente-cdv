@@ -193,11 +193,13 @@ def montar_mensagem_cemig(
             f"Chegada em Timóteo: <b>~3h</b> ({previsao.strftime('%d/%m %H:%M')} BRT)",
         ]
         
-        # Adiciona a previsão de subida baseada no Delta
-        if delta_vazao > 0:
-            subida_cm = delta_vazao * FATOR_SUBIDA_CEMIG
-            if subida_cm >= 5: # Só avisa se a subida for perceptível (maior que 5cm)
-                linhas.append(f"📈 <i>Impacto estimado: rio sobe ~{subida_cm:.0f} cm em Timóteo.</i>")
+        # Adiciona a previsão de impacto (subida ou queda)
+        impacto_cm = delta_vazao * FATOR_SUBIDA_CEMIG
+        if abs(impacto_cm) >= 5: # Só avisa se a mudança for perceptível (maior que 5cm)
+            if impacto_cm > 0:
+                linhas.append(f"📈 <i>Impacto estimado: rio sobe ~{impacto_cm:.0f} cm em Timóteo.</i>")
+            else:
+                linhas.append(f"📉 <i>Impacto estimado: rio baixa ~{abs(impacto_cm):.0f} cm em Timóteo.</i>")
 
     elif faixa_nova == "normal" and faixa_antiga != "inicial":
         linhas += ["", "Defluência retornou ao nível normal."]
