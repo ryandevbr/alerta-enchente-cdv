@@ -133,11 +133,13 @@ def gerar_video_final(supabase):
             file_options={"content-type": "video/mp4", "upsert": "true"}
         )
     
-    url_final = supabase.storage.from_("stories").get_public_url("story_video.mp4")
+    url_base = supabase.storage.from_("stories").get_public_url("story_video.mp4")
+    ts = int(datetime.now().timestamp())
+    url_final = f"{url_base}?t={ts}" # <-- Adiciona o cache buster
     
     supabase.table("cache_site").upsert({
         "chave": "story_atual",
-        "dados": {"url": url_final, "gerado_em": datetime.now(timezone.utc).isoformat(), "tipo": "video"},
+        "dados": {"url": url_final, "gerado_at": datetime.now(timezone.utc).isoformat(), "tipo": "video"},
         "atualizado_em": datetime.now(timezone.utc).isoformat()
     }, on_conflict="chave").execute()
 

@@ -66,7 +66,7 @@ Sistema em operação desde setembro de 2026. Todas as funcionalidades principai
 - Câmera ao vivo (WebRTC via VPS próprio)
 - Monitoramento de temperatura do equipamento em tempo real
 - Bypass de bateria para câmera 24/7 (Hardware customizado)
-- Geração de artes para Instagram Stories (Python + Pillow)
+- Geração automática de vídeos para Instagram Stories (corte de 10s da live + overlay dinâmico com FFmpeg)
 - Automação de postagem no Instagram (MacroDroid)
 
 ---

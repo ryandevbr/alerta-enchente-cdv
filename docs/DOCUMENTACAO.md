@@ -584,15 +584,21 @@ matplotlib>=3.8.0
 scikit-learn>=1.4.0
 playwright>=1.45.0
 ```
-### 8.4 gerar_story.py (Automação do Instagram)
+### 8.4 gerar_story.py (Automação de Vídeo para o Instagram)
 
-Script executado sob demanda (via botão no Telegram ou GitHub Actions).
-1. Consulta os dados atuais de nível e defluência no Supabase.
-2. Seleciona um template PNG base (Azul, Amarelo, Laranja ou Vermelho).
-3. Utiliza a biblioteca `Pillow` para desenhar os textos (nível, comparativo de anos de enchente e defluência) sobre a imagem.
-4. Salva a imagem final no Supabase Storage.
-5. Envia uma notificação no Telegram avisando que a arte está pronta.
-O celular do projeto (Moto G7 Play) detecta essa notificação via MacroDroid, baixa a imagem e posta no Instagram Stories.
+Script executado sob demanda (via botão no Telegram) ou automaticamente (agendado no GitHub Actions). O objetivo é criar um vídeo curto (Story) mostrando o rio em tempo real com as informações sobrepostas.
+
+**Fluxo de Execução:**
+1. Consulta os dados atuais de nível, defluência e o comparativo histórico no Supabase.
+2. Seleciona o template PNG base correto de acordo com a faixa do rio (Normal, Atenção, Alerta ou Inundação). O template possui a metade superior transparente e a metade inferior com o design do projeto.
+3. Utiliza a biblioteca `Pillow` para desenhar os textos dinâmicos (nível atual, comparativo de anos de enchente, defluência da CEMIG e data/hora) sobre a parte inferior do template.
+4. Faz uma requisição HTTP para o VPS próprio e baixa o clipe de vídeo mais recente (10 segundos) gerado pelo MediaMTX.
+5. Utiliza o **FFmpeg** (instalado no ambiente do GitHub Actions) para compor o vídeo final: ele escala o clipe para 1080x1920, posiciona o vídeo no topo da tela e sobrepõe a imagem PNG transparente por cima.
+6. Salva o arquivo `.mp4` resultante no Supabase Storage.
+7. Envia uma notificação no Telegram avisando que o vídeo está pronto.
+
+**Postagem no Celular:**
+O celular dedicado à postagem (Moto G7 Play) detecta a notificação via MacroDroid, baixa o arquivo `.mp4` do Supabase para a pasta de vídeos do Android e utiliza a automação de interface (UI Interaction) para abrir o Instagram e publicar o vídeo no Stories.
 
 ---
 
