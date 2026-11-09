@@ -13,7 +13,7 @@ Sistema de alerta antecipado de cheias do Rio Piracicaba em Cachoeira do Vale (T
 
 A comunidade de Cachoeira do Vale, em Timóteo (MG), sofre com cheias periódicas do Rio Piracicaba. As ferramentas públicas disponíveis hoje avisam a população apenas quando a água já está na cota de inundação, o que não dá tempo hábil para moradores retirarem móveis, documentos ou evacuarem.
 
-Este sistema resolve esse problema monitorando o rio em pontos a montante do bairro e disparando alertas com até 10 horas de antecedência.
+Este sistema resolve esse problema monitorando o rio em pontos a montante do bairro e a operação da barragem. Com base em um estudo de correlação estatística, o sistema agora projeta a elevação do nível do rio nas próximas 3 horas, considerando a variação da vazão liberada pela CEMIG, permitindo alertas com grande precisão.
 
 O projeto combina três fontes de dados:
 
@@ -117,11 +117,10 @@ Celular (IRL Pro) -----> VPS (MediaMTX) -----> Site (WebRTC)
 MacroDroid --------------------+ (API de status e temperatura)
 ```
 
-### Tempo de trânsito
+### Tempo de trânsito e Projeção
+O estudo hidrológico inicial estimava o tempo de trânsito da onda a partir de Nova Era em 9 a 10 horas. No entanto, o estudo de correlação isolado (sem chuva) provou que a **barragem da UHE Sá Carvalho é o principal fator de controle imediato** em Timóteo. 
 
-Uma onda de cheia leva entre 9 e 10 horas para percorrer o trecho entre Nova Era (montante) e Timóteo (jusante). O sistema usa esse tempo para avisar a população com antecedência.
-
-O estudo hidrológico completo que fundamenta esse valor está na seção 5 da documentação técnica.
+A água liberada pela barragem leva **3 horas** para chegar ao bairro. A fórmula descoberta (`Delta_Nivel = 0.555 * Delta_Vazao`) indica que para cada **+100 m³/s** liberados, o rio sobe **55,5 cm**. O slider da aba "A Caminho" projeta essa subida.
 
 ### Alertas qualitativos
 

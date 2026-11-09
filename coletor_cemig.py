@@ -81,21 +81,30 @@ def coletar_dados_cemig() -> Optional[dict[str, Any]]:
             locale="pt-BR",
         )
         page = ctx.new_page()
+        page.set_default_timeout(90000)  # Aumenta o timeout padrão para 90 segundos
 
         try:
-            page.goto(URL_CEMIG, wait_until="networkidle", timeout=90000)
+            # Tenta acessar o site até 3 vezes
+            for tentativa in range(3):
+                try:
+                    log.info(f"Tentativa {tentativa + 1} de acessar a CEMIG...")
+                    page.goto(URL_CEMIG, wait_until="networkidle", timeout=120000)
+                    break
+                except Exception as e:
+                    if tentativa == 2:
+                        raise e
+                    log.warning(f"Falha na tentativa {tentativa + 1}: {e}. Aguardando 10s...")
+                    page.wait_for_timeout(10000)
+
+            # Espera o elemento aparecer (com timeout maior)
             page.wait_for_function(
                 """() => {
-                    const nivel = document.getElementById('nivel_atual_valor');
-                    const afluencia = document.getElementById('afluencia_valor');
-                    const defluencia = document.getElementById('defluencia_valor');
-                    return nivel && nivel.innerText.trim().length > 0 &&
-                           afluencia && afluencia.innerText.trim().length > 0 &&
-                           defluencia && defluencia.innerText.trim().length > 0;
+                    const el = document.getElementById('nivel_atual_valor');
+                    return el && el.innerText && el.innerText.trim().length > 0;
                 }""",
-                timeout=60000,
+                timeout=90000,  # Aumenta para 90 segundos
             )
-            page.wait_for_timeout(3000) # Dá 3 segundos extras de segurança
+            page.wait_for_timeout(3000)  # Pausa extra para garantir carregamento completo
 
             dados: dict[str, Any] = {}
             for chave, id_el in IDS_VALORES.items():

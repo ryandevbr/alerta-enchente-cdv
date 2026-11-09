@@ -21,7 +21,6 @@ from core.db import (
     calcular_idade_minutos,
     obter_supabase,
     obter_ultima_leitura_ana,
-    obter_ultima_leitura_cemig,
     parse_iso_utc,
 )
 from core.telegram import obter_direcao_transicao, processar_transicao_alerta
@@ -49,6 +48,9 @@ ORDEM_DEFLUENCIA = ["normal", "atencao", "alerta", "critico"]
 COOLDOWN_MIN = 30.0
 IDADE_MAXIMA_DADO_MIN = 180.0
 IDADE_MAXIMA_CEMIG_MIN = 180.0
+
+# Fator de correlação descoberto no estudo (55.5 cm de subida para cada 100 m³/s)
+FATOR_SUBIDA_CEMIG = 0.555
 
 
 def classificar_faixa_ana(nivel: float) -> str:
@@ -162,6 +164,7 @@ def montar_mensagem_cemig(
     faixa_nova: str,
     faixa_antiga: str,
     vazao: float,
+    delta_vazao: float,
     ts_iso: str,
 ) -> str:
     """Monta mensagem HTML de alerta para defluência da UHE Sá Carvalho (CEMIG)."""
@@ -182,34 +185,67 @@ def montar_mensagem_cemig(
     ]
 
     if faixa_nova in ("atencao", "alerta", "critico") and dt is not None:
-        previsao = (dt + timedelta(hours=4)).astimezone(TZ_BRASILIA)
+        # Tempo de trânsito atualizado para 3 horas
+        previsao = (dt + timedelta(hours=3)).astimezone(TZ_BRASILIA)
         linhas += [
             "",
             "<b>CEMIG liberando água da barragem.</b>",
-            f"Chegada em Timóteo: ~4h ({previsao.strftime('%d/%m %H:%M')} BRT)",
+            f"Chegada em Timóteo: <b>~3h</b> ({previsao.strftime('%d/%m %H:%M')} BRT)",
         ]
+        
+        # Adiciona a previsão de subida baseada no Delta
+        if delta_vazao > 0:
+            subida_cm = delta_vazao * FATOR_SUBIDA_CEMIG
+            if subida_cm >= 5: # Só avisa se a subida for perceptível (maior que 5cm)
+                linhas.append(f"📈 <i>Impacto estimado: rio sobe ~{subida_cm:.0f} cm em Timóteo.</i>")
+
     elif faixa_nova == "normal" and faixa_antiga != "inicial":
         linhas += ["", "Defluência retornou ao nível normal."]
 
     return "\n".join(linhas)
 
-def montar_push_cemig(faixa_nova: str, faixa_antiga: str, vazao: float) -> tuple[str, str]:
+def montar_push_cemig(faixa_nova: str, faixa_antiga: str, vazao: float, delta_vazao: float) -> tuple[str, str]:
     """Gera o título e corpo do Push Notification para a CEMIG."""
     emoji, label = _metadados_defluencia(faixa_nova)
     titulo = f"{emoji} CEMIG: {label.split('·')[0].strip()}"
-    corpo = f"UHE Sá Carvalho liberando {vazao:.0f} m³/s. Chegada em ~4h."
+    corpo = f"UHE Sá Carvalho liberando {vazao:.0f} m³/s. Chegada em ~3h."
+    
+    if delta_vazao > 0:
+        subida_cm = delta_vazao * FATOR_SUBIDA_CEMIG
+        if subida_cm >= 5:
+            corpo += f" Subida estimada: {subida_cm:.0f} cm."
+            
     return titulo, corpo
 
 def processar_cemig() -> bool:
     """Verifica a última defluência da UHE Sá Carvalho e dispara alerta se mudou de faixa."""
     chave = "CEMIG_SA_CARVALHO"
-    leitura = obter_ultima_leitura_cemig(apenas_com_defluencia=True)
-    if not leitura or leitura.get("defluencia_m3s") is None:
+    
+    # Em vez de pegar só a última, pega as 2 últimas leituras para calcular o Delta
+    supabase = obter_supabase()
+    res = (
+        supabase.table("historico_cemig")
+        .select("defluencia_m3s, data_hora")
+        .not_.is_("defluencia_m3s", "null")
+        .order("data_hora", desc=True)
+        .limit(2)
+        .execute()
+    )
+    
+    if not res.data or len(res.data) == 0:
         log.warning("   Sá Carvalho: sem dados de defluência")
         return False
 
-    vazao = float(leitura["defluencia_m3s"])
-    ts = leitura["data_hora"]
+    leitura_atual = res.data[0]
+    vazao = float(leitura_atual["defluencia_m3s"])
+    ts = leitura_atual["data_hora"]
+    
+    # Calcula o delta (se houver a leitura anterior)
+    delta_vazao = 0.0
+    if len(res.data) > 1:
+        vazao_anterior = float(res.data[1]["defluencia_m3s"])
+        delta_vazao = vazao - vazao_anterior
+
     idade_min = calcular_idade_minutos(ts)
 
     if idade_min is None or idade_min > IDADE_MAXIMA_CEMIG_MIN:
@@ -227,10 +263,10 @@ def processar_cemig() -> bool:
         formato_valor=".1f",
         faixa_nova=faixa_nova,
         montar_mensagem_fn=lambda f_nova, f_ant: montar_mensagem_cemig(
-            f_nova, f_ant, vazao, ts
+            f_nova, f_ant, vazao, delta_vazao, ts
         ),
         montar_push_fn=lambda f_nova, f_ant: montar_push_cemig(
-            f_nova, f_ant, vazao
+            f_nova, f_ant, vazao, delta_vazao
         ),
         cooldown_min=COOLDOWN_MIN,
     )

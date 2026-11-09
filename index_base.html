@@ -1266,27 +1266,15 @@
       <div
         class="absolute bottom-20 left-1/2 transform -translate-x-1/2 z-10 glass-panel px-4 md:px-8 py-4 md:py-3 rounded-2xl shadow-2xl w-[92%] md:w-[96%] max-w-5xl flex flex-col items-center border-t border-l border-white/20"
       >
-        <div
-          class="w-full flex justify-between text-[10px] md:text-xs text-gray-400 font-bold mb-3 md:mb-2"
-        >
-          <span>Agora (0h)</span>
-          <span>+3h</span>
-          <span>+6h</span>
-          <span>+9h (Lido em Nova Era)</span>
+        <div class="w-full flex justify-between text-[10px] md:text-xs text-gray-400 font-bold mb-3 md:mb-2">
+            <span>Agora (0h)</span>
+            <span>+1h</span>
+            <span>+2h</span>
+            <span>+3h (Projeção)</span>
         </div>
-        <!-- Max = 9 -->
-        <input
-          type="range"
-          id="sliderTempo"
-          min="0"
-          max="9"
-          step="1"
-          value="0"
-          class="w-full h-1.5 md:h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
-        />
-        <p class="hidden md:block mt-4 text-sm text-gray-300 text-center">
-          Visualização garantida do escoamento pelo desfasamento da bacia.
-        </p>
+        <!-- Max = 4 -->
+        <input type="range" id="sliderTempo" min="0" max="3" step="1" value="0" class="w-full h-1.5 md:h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+        <p class="hidden md:block mt-4 text-sm text-gray-300 text-center">Projeção de subida baseada na vazão atual da barragem CEMIG.</p>
       </div>
     </div>
 
@@ -2469,7 +2457,7 @@
       const SUPABASE_ANON_KEY = "CHAVE_SUPABASE_AQUI"; // Insira a sua Chave
 
       let nivelTimoteoAtual = "--";
-      let niveisNovaEra = {}; // Irá conter { 1: nível, 2: nível, ..., 9: nível }
+      let projecaoFutura = {}; // Irá conter { 1: nível, 2: nível, 3: nível }
       // Variáveis de estado do CEMIG, sparkline e comparativo
       let _cemigDados = null;
       let _defluencia48hData = null;
@@ -2529,7 +2517,7 @@
           const jsonSupabase = await resposta.json();
 
           if (jsonSupabase && jsonSupabase.length > 0) {
-            niveisNovaEra = jsonSupabase[0].dados;
+              projecaoFutura = jsonSupabase[0].dados;
           }
         } catch (error) {
           console.error("Erro na onda desfasada:", error);
@@ -2619,10 +2607,7 @@
         .addEventListener("input", function (e) {
           const hora = parseInt(e.target.value);
           // Se for hora zero, usamos o nível de Timóteo. Caso contrário, usamos o valor gravado de Nova Era.
-          const nivelProjetado =
-            hora === 0 && nivelTimoteoAtual !== "--"
-              ? nivelTimoteoAtual
-              : niveisNovaEra[hora] || nivelTimoteoAtual;
+          const nivelProjetado = (hora === 0 && nivelTimoteoAtual !== '--') ? nivelTimoteoAtual : (projecaoFutura[hora] || nivelTimoteoAtual);
           atualizarPainel(nivelProjetado, null, hora);
         });
 

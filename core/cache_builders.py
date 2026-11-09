@@ -60,97 +60,76 @@ def obter_status_atual(client: Optional[Client] = None) -> Optional[dict[str, An
     return status
 
 
-def obter_serie_montante(
-    horas_atras: int,
-    client: Optional[Client] = None,
-) -> Optional[pd.DataFrame]:
-    """
-    Retorna DataFrame horário (resample 1h, ffill) com a série recente de
-    Nova Era. Índice em UTC. Coluna: nivel_cm.
-    """
-    db = client or obter_supabase()
-    agora = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-    desde = agora - timedelta(hours=horas_atras + 2)
-
-    try:
-        resp = (
-            db.table("historico_ana")
-            .select("data_hora,nivel_cm")
-            .eq("codigo_ana", COD_NOVA_ERA)
-            .gte("data_hora", desde.isoformat())
-            .not_.is_("nivel_cm", "null")
-            .order("data_hora")
-            .execute()
-        )
-    except Exception as exc:
-        log.error("Erro ao consultar Nova Era: %s", exc)
-        return None
-
-    if not resp.data:
-        log.warning("Sem dados de Nova Era nas últimas %sh", horas_atras + 2)
-        return None
-
-    df = pd.DataFrame(resp.data)
-    df["data_hora"] = pd.to_datetime(df["data_hora"], utc=True)
-    df = df.set_index("data_hora").sort_index()
-
-    # Reamostra para hora cheia (pega a mais recente de cada hora)
-    return df.resample("1h").last().ffill()
-
 
 def construir_onda_desfasada(
     nivel_timoteo_atual: Optional[float],
     client: Optional[Client] = None,
 ) -> Optional[dict[int, float]]:
     """
-    Monta `{1: previsao_T, ..., LAG: previsao_T}` usando o método da variação
-    (delta) de Nova Era aplicada sobre o nível atual de Timóteo:
-        delta(n) = NE(agora - LAG + n) - NE(agora - LAG)
-        onda[n]  = T_agora + delta(n)
+    Monta a projeção do nível do rio em Timóteo para as próximas 3 horas,
+    baseada na defluência atual da barragem CEMIG.
+    Fórmula baseada no estudo de correlação (55.5 cm a cada 100 m³/s).
     """
     if nivel_timoteo_atual is None:
-        log.warning("Nível de Timóteo indisponível. Onda não calculada.")
+        log.warning("Nível de Timóteo indisponível. Projeção não calculada.")
         return None
 
-    df = obter_serie_montante(LAG_HORAS, client=client)
-    if df is None or df.empty:
+    db = client or obter_supabase()
+
+    try:
+        # Pega as duas últimas leituras da CEMIG para calcular o Delta
+        resp = (
+            db.table("historico_cemig")
+            .select("defluencia_m3s")
+            .not_.is_("defluencia_m3s", "null")
+            .order("data_hora", desc=True)
+            .limit(2)
+            .execute()
+        )
+
+        # Se não houver pelo menos 2 leituras, não conseguimos calcular o delta.
+        # Retorna uma linha reta com o nível atual.
+        if not resp.data or len(resp.data) < 2:
+            log.warning("Sem dados suficientes da CEMIG. Projeção plana.")
+            return {
+                1: round(nivel_timoteo_atual, 1), 
+                2: round(nivel_timoteo_atual, 1), 
+                3: round(nivel_timoteo_atual, 1)
+            }
+
+        vazao_atual = float(resp.data[0]["defluencia_m3s"])
+        vazao_anterior = float(resp.data[1]["defluencia_m3s"])
+        
+        delta_vazao = vazao_atual - vazao_anterior
+        FATOR_SUBIDA = 0.555 # 55.5 cm para cada 100 m³/s
+
+        # Se a vazão estiver caindo ou estável, a projeção é o nível atual mantido
+        if delta_vazao <= 0:
+            return {
+                1: round(nivel_timoteo_atual, 1), 
+                2: round(nivel_timoteo_atual, 1), 
+                3: round(nivel_timoteo_atual, 1)
+            }
+
+        # Calcula a subida total baseada na variação da vazão
+        subida_total_estimada = delta_vazao * FATOR_SUBIDA
+        
+        # Distribui a subida ao longo das 3 horas (curva de chegada progressiva)
+        onda = {
+            1: round(nivel_timoteo_atual + (subida_total_estimada * (1/3)), 1),
+            2: round(nivel_timoteo_atual + (subida_total_estimada * (2/3)), 1),
+            3: round(nivel_timoteo_atual + subida_total_estimada, 1)
+        }
+        
+        log.info(
+            "Projeção CEMIG: Delta Vazão = %.1f m³/s | Subida estimada = %.1f cm", 
+            delta_vazao, subida_total_estimada
+        )
+        return onda
+
+    except Exception as exc:
+        log.error("Erro ao calcular projeção da CEMIG: %s", exc)
         return None
-
-    agora = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
-    alvo_base = agora - timedelta(hours=LAG_HORAS)
-    tol = timedelta(hours=TOLERANCIA_BUSCA_HORAS)
-
-    janela_base = df[(df.index >= alvo_base - tol) & (df.index <= alvo_base + tol)]
-    if janela_base.empty:
-        log.warning("Sem leitura de Nova Era em ~%s. Onda não calculada.", alvo_base)
-        return None
-
-    pos_base = abs((janela_base.index - alvo_base).total_seconds()).argmin()
-    ne_base = janela_base.iloc[pos_base]["nivel_cm"]
-    if pd.isna(ne_base):
-        log.warning("NE base inválida.")
-        return None
-
-    onda: dict[int, float] = {}
-    for n in range(1, LAG_HORAS + 1):
-        alvo_n = agora - timedelta(hours=LAG_HORAS - n)
-        janela_n = df[(df.index >= alvo_n - tol) & (df.index <= alvo_n + tol)]
-        if janela_n.empty:
-            continue
-
-        pos_n = abs((janela_n.index - alvo_n).total_seconds()).argmin()
-        ne_n = janela_n.iloc[pos_n]["nivel_cm"]
-        if pd.isna(ne_n):
-            continue
-
-        delta = ne_n - ne_base
-        onda[n] = round(float(nivel_timoteo_atual + delta), 1)
-
-    if not onda:
-        log.warning("Nenhum valor calculado para a onda.")
-        return None
-
-    return onda
 
 
 def _buscar_nivel_ano_anterior(

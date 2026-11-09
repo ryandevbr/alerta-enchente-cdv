@@ -332,6 +332,17 @@ Para gerar manchas de inundacao que representem fielmente a area atingida, foi n
 
 **Implicacao:** se o zero oficial divergir de 226,34 m, todas as manchas devem ser regeradas pelo `gerar_manchas.py` (basta mudar uma constante no topo do script).
 
+### 5.6 Estudo de Correlação: CEMIG x Nível Timóteo
+
+Para prever com precisão o nível em Timóteo em curto prazo, foi realizado um estudo de Regressão Linear Múltipla isolando a variável "chuva" (filtro de precipitação < 1mm). 
+
+**Conclusões:**
+- **Tempo de Trânsito Real:** 3 horas (a água liberada pela barragem chega a Timóteo).
+- **Correlação (Lag 3h):** 0.836 (correlação forte no período de seca).
+- **Fórmula Preditiva:** `Delta_Nivel = 0.5550 * Delta_Vazao`.
+
+Isso significa que para cada aumento de **+100 m³/s** na defluência da barragem, o rio sobe, em média, **55,5 cm** após 3 horas. A chuva local em Timóteo não apresentou correlação significativa com a subida imediata, provando que a onda vem da cabeceira.
+
 ---
 
 ## GRUPO D — Seções 6, 7 e 10.3 (frontend, cache, estrutura)
@@ -442,11 +453,14 @@ Para operar 24 horas por dia na margem do rio sem risco de superaquecimento ou e
 - A célula de lítio foi removida fisicamente.
 - A placa BMS original foi mantida e é alimentada por um conversor Step-Down, ajustado para 4.2V e estabilizado por um capacitor de 1000µF.
 - Um resistor de 10kΩ foi soldado no pino NTC (TP1) da BMS para enganar o sistema de temperatura e permitir o boot.
-- **Auto-Boot:** Um Módulo Relé Temporizador (modo P2) foi conectado aos contatos do botão Power. Quando a energia elétrica retorna, o relé simula um toque físico após 5 segundos, ligando o celular automaticamente.
+- **Auto-Boot com Relé:** Para ligar o celular após quedas de energia, um Módulo Relé Temporizador (modo P2) foi conectado aos contatos do botão Power. Ele aguarda 5 segundos após a energia retornar e simula o toque físico.
 
 **Arquitetura de Vídeo:**
 - O aplicativo IRL Pro captura a imagem e envia via RTMP para um VPS próprio rodando MediaMTX.
 - O MediaMTX converte o sinal para WebRTC (latência < 1s), e o site consome esse stream via iframe seguro.
+
+**Geração de Vídeos (FFmpeg):**
+O sistema não posta mais imagens estáticas. O servidor VPS grava clipes de 10 segundos em fMP4. O GitHub Actions baixa o clipe e usa o FFmpeg para sobrepor o template transparente gerado pelo Pillow, criando um vídeo vertical (1080x1920) com o rio em movimento e os dados estáticos. O vídeo final é enviado ao Supabase Storage.
 
 **Automação no Aparelho:**
 - O MacroDroid gerencia o celular: ao ligar, ele abre o RustDesk (acesso remoto), inicia o IRL Pro e envia a temperatura da CPU, GPU e Câmera para o Supabase (chave `camera_temp`) a cada 15 minutos.
@@ -640,7 +654,10 @@ Casos de uso:
 - Favicon: mesma logo
 - Open Graph: metatags para preview no WhatsApp
 
-### 10.3 Estrutura do repositorio
+### 10.3 O Slider de Projeção
+O slider na aba "A Caminho" foi modificado. Anteriormente (Lag 9h), ele usava a variação de Nova Era. Agora, ele consulta as duas últimas leituras da CEMIG no `cache_site`, calcula o delta da vazão e aplica a fórmula (`0.555 cm/m³s`) para projetar a subida nas próximas **3 horas**, dividindo o impacto progressivamente (1/3 na primeira hora, etc.).
+
+### 10.4 Estrutura do repositorio
 
 ```
 Alerta Enchente - CDV/
