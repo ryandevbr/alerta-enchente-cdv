@@ -891,7 +891,7 @@
                 </div>
                 
                 <!-- Container com rolagem horizontal -->
-                <div id="historicoVisualList" class="flex gap-2 overflow-x-auto pb-2 snap-x scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                <div id="historicoVisualList" class="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
                     <!-- As imagens serão inseridas aqui pelo JS -->
                 </div>
             </div>
@@ -4067,16 +4067,16 @@
                 const cotas = Object.keys(historico).sort((a, b) => Number(a) - Number(b));
                 
                 cotas.forEach(cota => {
-                    const url = historico[cota];
-                    list.innerHTML += `
-                        <div class="snap-start flex-shrink-0 relative w-32 h-24 rounded-lg overflow-hidden border border-white/10 group">
-                            <img src="${url}" alt="Rio em ${cota} cm" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
-                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm text-center py-1">
-                                <span class="text-[10px] font-bold text-white">${cota} cm</span>
-                            </div>
+                const url = historico[cota];
+                list.innerHTML += `
+                    <div class="snap-center flex-shrink-0 relative w-[85vw] max-w-[400px] aspect-video rounded-xl overflow-hidden border border-white/10 shadow-lg group bg-black/40">
+                        <img src="${url}" alt="Rio em ${cota} cm" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-6 pb-2 text-center">
+                            <span class="text-sm font-bold text-white tracking-wider">Nível: ${cota} cm</span>
                         </div>
-                    `;
-                });
+                    </div>
+                `;
+            });
                 
                 wrap.classList.remove('hidden-notification');
             }
