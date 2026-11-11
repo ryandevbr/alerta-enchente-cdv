@@ -881,6 +881,21 @@
               </div>
             </div>
 
+            <!-- Galeria Histórica do Rio -->
+            <div id="historicoVisualWrap" class="mt-4 hidden-notification">
+                <div class="flex items-center justify-between mb-2">
+                    <p class="text-[11px] font-bold tracking-wider text-blue-400 uppercase leading-none">
+                        Memória Visual do Rio
+                    </p>
+                    <span class="text-[10px] text-gray-500">Arraste para o lado →</span>
+                </div>
+                
+                <!-- Container com rolagem horizontal -->
+                <div id="historicoVisualList" class="flex gap-2 overflow-x-auto pb-2 snap-x scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-transparent">
+                    <!-- As imagens serão inseridas aqui pelo JS -->
+                </div>
+            </div>
+
             <p
               class="text-[10px] text-gray-500 text-center mt-3 leading-relaxed"
             >
@@ -4032,6 +4047,44 @@
         }
       }
 
+      async function carregarHistoricoVisual() {
+        const wrap = document.getElementById('historicoVisualWrap');
+        const list = document.getElementById('historicoVisualList');
+        if (!wrap || !list) return;
+
+        try {
+            const r = await fetch(
+                `${SUPABASE_URL}/rest/v1/cache_site?chave=eq.historico_visual&select=dados`,
+                { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` } }
+            );
+            const j = await r.json();
+            
+            if (j && j.length > 0 && j[0].dados) {
+                const historico = j[0].dados;
+                list.innerHTML = ''; // Limpa antes de renderizar
+                
+                // Ordena as cotas (ex: 100, 150, 200...)
+                const cotas = Object.keys(historico).sort((a, b) => Number(a) - Number(b));
+                
+                cotas.forEach(cota => {
+                    const url = historico[cota];
+                    list.innerHTML += `
+                        <div class="snap-start flex-shrink-0 relative w-32 h-24 rounded-lg overflow-hidden border border-white/10 group">
+                            <img src="${url}" alt="Rio em ${cota} cm" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110">
+                            <div class="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm text-center py-1">
+                                <span class="text-[10px] font-bold text-white">${cota} cm</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                wrap.classList.remove('hidden-notification');
+            }
+        } catch (e) {
+            console.warn('[HISTORICO VISUAL] Erro:', e);
+        }
+    }
+
       function abrirCameraAoVivo() {
         const modal = document.getElementById("modalCameraAoVivo");
         if (!modal) return;
@@ -4058,8 +4111,9 @@
         modal.classList.remove("hidden-notification");
         atualizarStatusCamera();
 
-        // Busca a temperatura sempre que o modal abrir
+        // Busca a temperatura e o historico sempre que o modal abrir
         carregarTemperaturaCamera();
+        carregarHistoricoVisual();
       }
 
       function fecharCameraAoVivo() {

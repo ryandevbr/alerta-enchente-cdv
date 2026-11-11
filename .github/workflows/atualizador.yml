@@ -105,6 +105,29 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python atualizador_cache_site.py
 
+  capturar-historico:
+    needs: [atualizar-cache]
+    runs-on: ubuntu-latest
+    # Roda no agendamento automático ou quando você mandar rodar o "completo"
+    if: ${{ !cancelled() && (github.event_name == 'schedule' || inputs.tarefa == 'completo') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+        
+      - name: Instalar FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        
+      - name: Capturar Frame Histórico
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python capturar_historico.py
+
   enviar-alertas:
     needs: [atualizar-ana, coletar-ana-xml, coletar-cemig]
     if: ${{ !cancelled() && (github.event_name == 'schedule' || inputs.tarefa != 'story') }}
