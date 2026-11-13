@@ -62,6 +62,7 @@
       rel="stylesheet"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/medium-zoom@1.1.0/dist/medium-zoom.min.js"></script>
 
     <style>
       body {
@@ -4071,13 +4072,22 @@
                 cotas.forEach(cota => {
                 const url = historico[cota];
                 list.innerHTML += `
-                    <div class="snap-center flex-shrink-0 relative w-[85vw] max-w-[400px] aspect-video rounded-xl overflow-hidden border border-white/10 shadow-lg group bg-black/40">
-                        <img src="${url}" alt="Rio em ${cota} cm" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
-                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-6 pb-2 text-center">
+                    <div class="snap-center flex-shrink-0 relative w-[85vw] max-w-[400px] aspect-video rounded-xl overflow-hidden border border-white/10 shadow-lg group bg-black/40 cursor-zoom-in">
+                        <!-- Adicionamos a classe 'historico-img' para o zoom -->
+                        <img src="${url}" alt="Rio em ${cota} cm" class="historico-img w-full h-full object-cover transition-transform duration-300 group-hover:scale-105">
+                        <!-- O 'pointer-events-none' evita que o texto atrapalhe o clique na imagem -->
+                        <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-6 pb-2 text-center pointer-events-none">
                             <span class="text-sm font-bold text-white tracking-wider">Nível: ${cota} cm</span>
                         </div>
                     </div>
                 `;
+            });
+
+            // Inicializa o efeito de zoom em todas as imagens recém-criadas
+            mediumZoom('.historico-img', {
+                margin: 20,
+                background: 'rgba(15, 23, 42, 0.95)', // Cor do fundo (azul escuro do site)
+                scrollOffset: 0
             });
                 
                 wrap.classList.remove('hidden-notification');

@@ -8,8 +8,11 @@ from core.db import obter_supabase, obter_ultima_leitura_ana, COD_TIMOTEO
 
 log = configurar_logger("historico_visual", formato_data="%H:%M:%S")
 
-# Cotas que queremos registrar na memória visual
-COTAS_ALVO = [100, 150, 200, 250, 300, 400, 500, 620]
+# Cotas que queremos registrar na memória visual (100 a 1000, passo 50)
+COTAS_ALVO = [
+    100, 150, 200, 250, 300, 350, 400, 450, 500, 
+    550, 600, 650, 700, 750, 800, 850, 900, 950, 1000
+]
 
 def baixar_ultimo_video():
     """Baixa o penúltimo vídeo da pasta de clipes do VPS."""
