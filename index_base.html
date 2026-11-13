@@ -79,6 +79,12 @@
         width: 100%;
       }
 
+        /* Garante que o zoom da imagem fique sempre acima de qualquer modal */
+        .medium-zoom-overlay, 
+        .medium-zoom-image--opened {
+            z-index: 9999 !important;
+        }
+
       .glass-panel {
         background: rgba(15, 23, 42, 0.75);
         backdrop-filter: blur(16px);
