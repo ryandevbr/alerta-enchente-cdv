@@ -599,6 +599,22 @@
                 </div>
               </div>
 
+                        <!-- Barra de Progresso e Analogia -->
+                        <div class="mt-4 mb-2">
+                            <div class="flex justify-between items-end mb-1">
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider">Vazão da Barragem</p>
+                                <span id="modalCemigPorcentagem" class="text-xs font-bold text-white">0%</span>
+                            </div>
+                            <div class="h-2.5 w-full bg-black/50 rounded-full overflow-hidden border border-white/10">
+                                <div id="modalCemigBarra" class="h-full bg-green-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center bg-black/20 rounded-lg p-2.5 border border-white/5 space-y-1">
+                            <p id="modalCemigAnalogia" class="text-[10px] text-gray-400"></p>
+                            <p id="modalCemigImpacto" class="text-xs font-bold text-gray-300"></p>
+                        </div>
+
               <div
                 id="modalCemigStatusBar"
                 class="mt-2 text-center text-[10px] font-medium text-gray-500 leading-none"
@@ -735,6 +751,27 @@
               >
                 <canvas id="graficoHistoricoRio"></canvas>
               </div>
+
+                <!-- Barra de Progresso do Nível do Rio -->
+                <div class="mt-4 mb-2">
+                    <div class="flex justify-between items-end mb-1">
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider">Nível Atual vs Limites</p>
+                        <span id="modalRioPorcentagem" class="text-xs font-bold text-white">0%</span>
+                    </div>
+                    
+                    <!-- Barra -->
+                    <div class="h-2.5 w-full bg-black/50 rounded-full overflow-hidden border border-white/10">
+                        <div id="modalRioBarra" class="h-full bg-blue-500 transition-all duration-1000 ease-out" style="width: 0%;"></div>
+                    </div>
+                    
+                    <!-- Marcadores de Cota (Posicionados exatamente na proporção matemática) -->
+                    <div class="relative w-full h-4 mt-1">
+                        <span class="absolute left-0 text-[9px] text-gray-500">0</span>
+                        <span class="absolute text-[9px] text-yellow-500 font-bold" style="left: 64.2%; transform: translateX(-50%);">450</span>
+                        <span class="absolute text-[9px] text-orange-500 font-bold" style="left: 77.1%; transform: translateX(-50%);">540</span>
+                        <span class="absolute text-[9px] text-red-500 font-bold" style="left: 88.5%; transform: translateX(-50%);">620</span>
+                    </div>
+                </div>
 
               <p
                 class="text-[10px] text-gray-500 text-center mt-3 leading-relaxed"
@@ -997,13 +1034,13 @@
                   class="bg-green-500/20 text-green-400 text-[9px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 leading-none"
                   >NORMAL</span
                 >
-                <button
+                <!-- <button
                   onclick="ativarModoDesastre()"
                   title="Testar gatilho"
                   class="text-red-400 text-xs p-0.5 rounded leading-none"
                 >
                   ⚠️
-                </button>
+                </button> -->
               </div>
             </div>
 
@@ -2974,139 +3011,208 @@
       }
 
       function _renderizarModalCemig() {
-        console.log(
-          "[DEBUG] _renderizarModalCemig — _cemigDados =",
-          _cemigDados,
-        );
         const d = _cemigDados;
         if (!d) return;
 
         const defluencia = d.defluencia_cemig;
-        const afluencia = d.afluencia_cemig;
+        const afluencia  = d.afluencia_cemig;
         const volumeUtil = d.volume_util_cemig;
         const atualizadoEm = d.cemig_atualizado_em;
 
-        if (afluencia != null)
-          document.getElementById("modalAfluencia").innerText =
-            afluencia.toFixed(1);
-        if (volumeUtil != null)
-          document.getElementById("modalVolume").innerText =
-            volumeUtil.toFixed(1);
+        if (afluencia != null) document.getElementById('modalAfluencia').innerText = afluencia.toFixed(1);
+        if (volumeUtil != null) document.getElementById('modalVolume').innerText = volumeUtil.toFixed(1);
 
         if (defluencia != null) {
-          document.getElementById("modalDefluencia").innerText =
-            defluencia.toFixed(1);
-          const faixa = classificarDefluencia(defluencia);
-          const card = document.getElementById("modalDefluenciaCard");
-          const texto = document.getElementById("modalDefluenciaText");
-          const statusBar = document.getElementById("modalCemigStatusBar");
+            document.getElementById('modalDefluencia').innerText = defluencia.toFixed(1);
+            const faixa = classificarDefluencia(defluencia);
+            const card = document.getElementById('modalDefluenciaCard');
+            const texto = document.getElementById('modalDefluenciaText');
+            const statusBar = document.getElementById('modalCemigStatusBar');
 
-          card.className = `bg-black/40 p-2.5 rounded-lg border ${faixa.borda} text-center transition-colors duration-300`;
-          texto.className = `text-base font-medium ${faixa.cor} leading-none`;
-          statusBar.innerText = faixa.label;
-          statusBar.className = `mt-2 text-center text-[10px] font-medium ${faixa.cor} leading-none`;
+            card.className = `bg-black/40 p-2.5 rounded-lg border ${faixa.borda} text-center transition-colors duration-300`;
+            texto.className = `text-base font-medium ${faixa.cor} leading-none`;
+            statusBar.innerText = faixa.label;
+            statusBar.className = `mt-2 text-center text-[10px] font-medium ${faixa.cor} leading-none`;
+
+            // --- NOVO: BARRA DE PROGRESSO E ANALOGIA ---
+            const maxVazao = 550;
+            let pct = (defluencia / maxVazao) * 100;
+            if (pct > 100) pct = 100;
+
+            const barra = document.getElementById('modalCemigBarra');
+            barra.style.width = `${pct}%`;
+            
+            // Cores da barra baseada na vazão
+            if (defluencia >= 550) barra.className = 'h-full bg-red-500 transition-all duration-1000 ease-out';
+            else if (defluencia >= 100) barra.className = 'h-full bg-orange-500 transition-all duration-1000 ease-out';
+            else if (defluencia >= 30) barra.className = 'h-full bg-yellow-500 transition-all duration-1000 ease-out';
+            else barra.className = 'h-full bg-green-500 transition-all duration-1000 ease-out';
+
+            document.getElementById('modalCemigPorcentagem').innerText = `${Math.round(pct)}%`;
+
+            // Analogia do caminhão-pipa (1 m³/s = 100 caminhões de 10.000L)
+            const caminhoes = Math.round(defluencia * 100);
+            document.getElementById('modalCemigAnalogia').innerText = 
+                `Equivale a ${caminhoes.toLocaleString('pt-BR')} caminhões-pipa por segundo.`;
+
+            // --- NOVO: FRASE DE IMPACTO DINÂMICA ---
+            // Vamos olhar para o gráfico de 48h para ver a tendência
+            let fraseImpacto = "Estável nas últimas horas.";
+            let corImpacto = "text-gray-400";
+            
+            if (_defluencia48hData && _defluencia48hData.pontos && _defluencia48hData.pontos.length > 0) {
+                // Pega o maior valor das últimas 12 horas (12 pontos)
+                const ultimos12 = _defluencia48hData.pontos.slice(-12);
+                const pico12h = Math.max(...ultimos12.map(p => p.v));
+                const delta = defluencia - pico12h;
+
+                if (delta > 5) {
+                    fraseImpacto = `Liberando mais água que o normal. O rio deve subir nas próximas 3h.`;
+                    corImpacto = "text-orange-400";
+                } else if (delta < -5) {
+                    fraseImpacto = `Reduzindo a liberação. O rio deve baixar nas próximas 3h.`;
+                    corImpacto = "text-blue-400";
+                }
+            }
+            
+            const elImpacto = document.getElementById('modalCemigImpacto');
+            elImpacto.innerText = fraseImpacto;
+            elImpacto.className = `text-xs font-bold ${corImpacto} leading-tight`;
         }
 
-        document.getElementById("modalCemigAge").innerText =
-          tempoRelativo(atualizadoEm);
-      }
+        document.getElementById('modalCemigAge').innerText = tempoRelativo(atualizadoEm);
+    }
 
       function _renderizarModalSparkline() {
-        const wrap = document.getElementById("modalSparklineWrap");
+        const wrap = document.getElementById('modalSparklineWrap');
         const d = _defluencia48hData;
 
         if (!d || !d.pontos || d.pontos.length < 2) {
-          wrap.classList.add("hidden-notification");
-          return;
+            wrap.classList.add('hidden-notification');
+            return;
         }
 
-        wrap.classList.remove("hidden-notification");
+        wrap.classList.remove('hidden-notification');
 
-        document.getElementById("modalSparkRange").innerText =
-          `${d.min} — ${d.max} m³/s`;
-        document.getElementById("modalSparkMin").innerText = d.min;
-        document.getElementById("modalSparkMax").innerText = d.max;
+        document.getElementById('modalSparkRange').innerText = `${d.min} — ${d.max} m³/s`;
+        document.getElementById('modalSparkMin').innerText = d.min;
+        document.getElementById('modalSparkMax').innerText = d.max;
 
-        const varEl = document.getElementById("modalSparkVar");
-        const sinal = d.variacao_pct >= 0 ? "+" : "";
+        const varEl = document.getElementById('modalSparkVar');
+        const sinal = d.variacao_pct >= 0 ? '+' : '';
         varEl.innerText = `${sinal}${d.variacao_pct}%`;
         varEl.className = `text-xs font-medium leading-none ${
-          d.variacao_pct > 15
-            ? "text-red-400"
-            : d.variacao_pct < -15
-              ? "text-green-400"
-              : "text-gray-300"
+            d.variacao_pct > 15 ? 'text-red-400'
+            : d.variacao_pct < -15 ? 'text-green-400'
+            : 'text-gray-300'
         }`;
 
-        // Chart.js — espera um frame pra garantir dimensão
         setTimeout(() => {
-          const ctx = document
-            .getElementById("graficoDetalhesDefluencia")
-            .getContext("2d");
-          if (_chartDetalhes) _chartDetalhes.destroy();
+            const ctx = document.getElementById('graficoDetalhesDefluencia').getContext('2d');
+            if (_chartDetalhes) _chartDetalhes.destroy();
 
-          const labels = d.pontos.map((p) => {
-            const dt = new Date(p.t);
-            return dt.toLocaleTimeString("pt-BR", {
-              hour: "2-digit",
-              minute: "2-digit",
+            const labels = d.pontos.map(p => {
+                const dt = new Date(p.t);
+                return dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
             });
-          });
+            
+            const valores = d.pontos.map(p => p.v);
+            const n = valores.length;
+            const linhaConst = (v) => new Array(n).fill(v);
 
-          _chartDetalhes = new Chart(ctx, {
-            type: "line",
-            data: {
-              labels: labels,
-              datasets: [
-                {
-                  label: "Defluência (m³/s)",
-                  data: d.pontos.map((p) => p.v),
-                  borderColor: "#fb923c",
-                  backgroundColor: "rgba(251, 146, 60, 0.15)",
-                  borderWidth: 2,
-                  tension: 0.3,
-                  fill: true,
-                  pointRadius: 0,
-                  pointHoverRadius: 5,
+            _chartDetalhes = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Defluência (m³/s)',
+                            data: valores,
+                            borderColor: '#fb923c',
+                            backgroundColor: 'rgba(251, 146, 60, 0.15)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 5,
+                            order: 1 // Fica na frente
+                        },
+                        // Linhas de referência
+                        {
+                            label: 'Atenção (30)',
+                            data: linhaConst(30),
+                            borderColor: '#facc15', // Amarelo
+                            borderWidth: 1,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            order: 2
+                        },
+                        {
+                            label: 'Alerta (100)',
+                            data: linhaConst(100),
+                            borderColor: '#fb923c', // Laranja
+                            borderWidth: 1,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            order: 3
+                        },
+                        {
+                            label: 'Crítico (550)',
+                            data: linhaConst(550),
+                            borderColor: '#ef4444', // Vermelho
+                            borderWidth: 1,
+                            borderDash: [5, 4],
+                            pointRadius: 0,
+                            fill: false,
+                            order: 4
+                        }
+                    ]
                 },
-              ],
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                tooltip: {
-                  backgroundColor: "rgba(15, 23, 42, 0.95)",
-                  titleColor: "#94a3b8",
-                  bodyColor: "#fff",
-                  displayColors: false,
-                  callbacks: {
-                    label: (context) => `${context.parsed.y.toFixed(1)} m³/s`,
-                  },
-                },
-              },
-              scales: {
-                y: {
-                  beginAtZero: false,
-                  grid: { color: "rgba(255, 255, 255, 0.05)" },
-                  ticks: { color: "#64748b", font: { size: 10 } },
-                },
-                x: {
-                  grid: { display: false },
-                  ticks: {
-                    color: "#64748b",
-                    font: { size: 9 },
-                    maxRotation: 0,
-                    autoSkip: true,
-                    maxTicksLimit: 6,
-                  },
-                },
-              },
-            },
-          });
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { display: false }, // Esconde a legenda para não poluir
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                            titleColor: '#94a3b8',
+                            bodyColor: '#fff',
+                            displayColors: false,
+                            callbacks: {
+                                label: (context) => {
+                                    if (context.dataset.label === 'Defluência (m³/s)') {
+                                        return `Vazão: ${context.parsed.y.toFixed(1)} m³/s`;
+                                    }
+                                    return null; // Esconde as linhas de referência do tooltip
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            suggestedMax: 600, // Garante que a linha de 550 apareça sempre
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { size: 10 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: {
+                                color: '#64748b',
+                                font: { size: 9 },
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 6
+                            }
+                        }
+                    }
+                }
+            });
         }, 50);
-      }
+    }
 
       function _renderizarModalHistoricoRio() {
         const wrap = document.getElementById("modalHistoricoRioWrap");
@@ -3159,6 +3265,23 @@
         } else {
           tendEl.innerText = "";
         }
+
+            // --- NOVO: ATUALIZAR A BARRA DE PROGRESSO DO RIO ---
+            const nivelAtual = d.pontos[d.pontos.length - 1].v;
+            const maxEscala = 700; // Usamos 700cm como teto da barra para dar margem
+            let pctRio = (nivelAtual / maxEscala) * 100;
+            if (pctRio > 100) pctRio = 100;
+
+            const barraRio = document.getElementById('modalRioBarra');
+            barraRio.style.width = `${pctRio}%`;
+            
+            // Cores dinâmicas da barra
+            if (nivelAtual >= 620) barraRio.className = 'h-full bg-red-500 transition-all duration-1000 ease-out';
+            else if (nivelAtual >= 540) barraRio.className = 'h-full bg-orange-500 transition-all duration-1000 ease-out';
+            else if (nivelAtual >= 450) barraRio.className = 'h-full bg-yellow-500 transition-all duration-1000 ease-out';
+            else barraRio.className = 'h-full bg-blue-500 transition-all duration-1000 ease-out';
+
+            document.getElementById('modalRioPorcentagem').innerText = `${Math.round(pctRio)}%`;
 
         // Grafico
         setTimeout(() => {
