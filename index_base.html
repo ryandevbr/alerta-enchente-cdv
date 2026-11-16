@@ -1131,13 +1131,13 @@
                     class="bg-green-500/20 text-green-400 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-500/50 transition-colors duration-300"
                     >NORMAL</span
                   >
-                  <button
+                  <!-- <button
                     onclick="ativarModoDesastre()"
                     title="Testar gatilho"
                     class="text-red-400 hover:text-red-300 text-xs p-1 rounded border border-red-500/30 hover:border-red-400/60 transition-colors"
                   >
                     ⚠️
-                  </button>
+                  </button> -->
                 </div>
               </div>
 
@@ -2512,64 +2512,66 @@
         // Carrega as manchas de inundacao
         carregarManchas();
 
+        // ==========================================
+        // ROTAS DE FUGA E PONTOS DE APOIO (MOVIDO PARA DENTRO DO LOAD)
+        // ==========================================
+        map.addSource('rotas-fuga', {
+            type: 'geojson',
+            data: '/rotas_fuga.geojson'
+        });
+
+        // 1. Desenha as linhas das rotas (verde neon)
+        map.addLayer({
+            id: 'rotas-fuga-line',
+            type: 'line',
+            source: 'rotas-fuga',
+            filter: ['==', ['get', 'tipo'], 'rota'],
+            layout: { 'visibility': 'none' }, // Começa escondido
+            paint: {
+                'line-color': '#22c55e', // Verde
+                'line-width': 5,
+                'line-dasharray': [2, 2], // Linha pontilhada
+                'line-opacity': 0.9
+            }
+        });
+
+        // 2. Desenha os pontos das escolas (ícone)
+        map.addLayer({
+            id: 'rotas-fuga-escolas',
+            type: 'circle',
+            source: 'rotas-fuga',
+            filter: ['==', ['get', 'tipo'], 'escola'],
+            layout: { 'visibility': 'none' }, // Começa escondido
+            paint: {
+                'circle-radius': 8,
+                'circle-color': '#ef4444', // Vermelho
+                'circle-stroke-width': 2,
+                'circle-stroke-color': '#ffffff'
+            }
+        });
+
+        // 3. Adiciona popup ao clicar na escola
+        map.on('click', 'rotas-fuga-escolas', (e) => {
+            const coordinates = e.features[0].geometry.coordinates.slice();
+            const nome = e.features[0].properties.nome;
+            
+            new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML(`<strong class="text-black">${nome}</strong><br><span class="text-gray-600 text-xs">Ponto de Apoio</span>`)
+                .addTo(map);
+        });
+
+        // Muda o cursor ao passar por cima da escola
+        map.on('mouseenter', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = ''; });
+        
+        // ==========================================
+
         // Aplica nivel inicial (usa o que ja estiver no painel)
         const nivelInicial =
           parseFloat(document.getElementById("nivelDisplay")?.innerText) || 0;
         aplicarNivel(nivelInicial);
       });
-
-            // ==========================================
-            // ROTAS DE FUGA E PONTOS DE APOIO
-            // ==========================================
-            map.addSource('rotas-fuga', {
-                type: 'geojson',
-                data: '/rotas_fuga.geojson'
-            });
-
-            // 1. Desenha as linhas das rotas (verde neon)
-            map.addLayer({
-                id: 'rotas-fuga-line',
-                type: 'line',
-                source: 'rotas-fuga',
-                filter: ['==', ['get', 'tipo'], 'rota'],
-                layout: { 'visibility': 'none' }, // Começa escondido
-                paint: {
-                    'line-color': '#22c55e', // Verde
-                    'line-width': 5,
-                    'line-dasharray': [2, 2], // Linha pontilhada
-                    'line-opacity': 0.9
-                }
-            });
-
-            // 2. Desenha os pontos das escolas (ícone)
-            map.addLayer({
-                id: 'rotas-fuga-escolas',
-                type: 'circle',
-                source: 'rotas-fuga',
-                filter: ['==', ['get', 'tipo'], 'escola'],
-                layout: { 'visibility': 'none' }, // Começa escondido
-                paint: {
-                    'circle-radius': 8,
-                    'circle-color': '#ef4444', // Vermelho
-                    'circle-stroke-width': 2,
-                    'circle-stroke-color': '#ffffff'
-                }
-            });
-
-            // 3. Adiciona popup ao clicar na escola
-            map.on('click', 'rotas-fuga-escolas', (e) => {
-                const coordinates = e.features[0].geometry.coordinates.slice();
-                const nome = e.features[0].properties.nome;
-                
-                new mapboxgl.Popup()
-                    .setLngLat(coordinates)
-                    .setHTML(`<strong class="text-black">${nome}</strong><br><span class="text-gray-600 text-xs">Ponto de Apoio</span>`)
-                    .addTo(map);
-            });
-
-            // Muda o cursor ao passar por cima da escola
-            map.on('mouseenter', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = 'pointer'; });
-            map.on('mouseleave', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = ''; });
 
       // ==========================================
       // 5. COMUNICAÇÃO SUPABASE (Onda Desfasada)
