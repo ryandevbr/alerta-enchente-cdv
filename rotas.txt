@@ -1,3 +1,42 @@
+Rota JP para JFM:
+
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {},
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [
+            -42.6663795,
+            -19.5324604
+          ],
+          [
+            -42.6672694,
+            -19.5318308
+          ],
+          [
+            -42.6676279,
+            -19.5324309
+          ],
+          [
+            -42.6682214,
+            -19.5321454
+          ],
+          [
+            -42.6682214,
+            -19.5321454
+          ]
+        ]
+      }
+    }
+  ]
+}
+
+Escola Estadual José Ferreira Maia:
+
 {
   "type": "FeatureCollection",
   "features": [
@@ -33,6 +72,20 @@
               -19.5323994
             ]
           ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "": "Escola Estadual José Ferreira Maia",
+        "marker-color": "rgba(0, 175, 23, 1)"
+      },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -42.6664499,
+          -19.5322602
         ]
       }
     }
