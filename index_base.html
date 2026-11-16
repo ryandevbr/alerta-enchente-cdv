@@ -1341,18 +1341,18 @@
     </div>
 
     <!-- Botão flutuante: câmera ao vivo -->
-    <button id="btnCameraAoVivo"
+    <!-- <button id="btnCameraAoVivo"
         onclick="abrirCameraAoVivo()"
         class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-40 left-4 md:bottom-auto md:top-3 md:left-[344px] md:right-auto">
     <span id="btnCameraDot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
     <span class="text-xs md:text-sm font-bold tracking-wider text-white">CLIQUE AQUI PARA VER O RIO AO VIVO</span>
-    </button>
+    </button> -->
 
           <!-- Botão de Rotas de Fuga -->
-            <button id="btnRotasFuga" onclick="toggleRotasFuga()"
+            <!-- <button id="btnRotasFuga" onclick="toggleRotasFuga()"
                     class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-56 left-4 md:bottom-auto md:top-[70px] md:left-[344px] md:right-auto">
                 <span class="text-xs md:text-sm font-bold tracking-wider text-white">ROTAS DE FUGA</span>
-            </button>
+            </button> -->
 
     <!-- ========================================== -->
     <!-- TELA 3: PREVISÃO DO TEMPO COMPLETA         -->
@@ -2512,58 +2512,85 @@
         // Carrega as manchas de inundacao
         carregarManchas();
 
-        // ==========================================
-        // ROTAS DE FUGA E PONTOS DE APOIO (MOVIDO PARA DENTRO DO LOAD)
-        // ==========================================
-        map.addSource('rotas-fuga', {
-            type: 'geojson',
-            data: '/rotas_fuga.geojson'
-        });
+            // ==========================================
+            // ROTAS DE FUGA E PONTOS DE APOIO
+            // ==========================================
+            map.addSource('rotas-fuga', {
+                type: 'geojson',
+                data: '/rotas_fuga.geojson'
+            });
 
-        // 1. Desenha as linhas das rotas (verde neon)
-        map.addLayer({
-            id: 'rotas-fuga-line',
-            type: 'line',
-            source: 'rotas-fuga',
-            filter: ['==', ['get', 'tipo'], 'rota'],
-            layout: { 'visibility': 'none' }, // Começa escondido
-            paint: {
-                'line-color': '#22c55e', // Verde
-                'line-width': 5,
-                'line-dasharray': [2, 2], // Linha pontilhada
-                'line-opacity': 0.9
-            }
-        });
+            // 1. Polígono da Escola (Preenchimento verde transparente)
+            map.addLayer({
+                id: 'rotas-fuga-polygon',
+                type: 'fill',
+                source: 'rotas-fuga',
+                filter: ['==', '$type', 'Polygon'],
+                layout: { 'visibility': 'none' },
+                paint: {
+                    'fill-color': '#22c55e',
+                    'fill-opacity': 0.2
+                }
+            });
 
-        // 2. Desenha os pontos das escolas (ícone)
-        map.addLayer({
-            id: 'rotas-fuga-escolas',
-            type: 'circle',
-            source: 'rotas-fuga',
-            filter: ['==', ['get', 'tipo'], 'escola'],
-            layout: { 'visibility': 'none' }, // Começa escondido
-            paint: {
-                'circle-radius': 8,
-                'circle-color': '#ef4444', // Vermelho
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#ffffff'
-            }
-        });
+            // 2. Borda do Polígono da Escola (Linha verde contínua)
+            map.addLayer({
+                id: 'rotas-fuga-polygon-outline',
+                type: 'line',
+                source: 'rotas-fuga',
+                filter: ['==', '$type', 'Polygon'],
+                layout: { 'visibility': 'none' },
+                paint: {
+                    'line-color': '#22c55e',
+                    'line-width': 2
+                }
+            });
 
-        // 3. Adiciona popup ao clicar na escola
-        map.on('click', 'rotas-fuga-escolas', (e) => {
-            const coordinates = e.features[0].geometry.coordinates.slice();
-            const nome = e.features[0].properties.nome;
-            
-            new mapboxgl.Popup()
-                .setLngLat(coordinates)
-                .setHTML(`<strong class="text-black">${nome}</strong><br><span class="text-gray-600 text-xs">Ponto de Apoio</span>`)
-                .addTo(map);
-        });
+            // 3. Linhas das Rotas (Verde pontilhado)
+            map.addLayer({
+                id: 'rotas-fuga-line',
+                type: 'line',
+                source: 'rotas-fuga',
+                filter: ['==', '$type', 'LineString'],
+                layout: { 'visibility': 'none' },
+                paint: {
+                    'line-color': '#22c55e',
+                    'line-width': 5,
+                    'line-dasharray': [2, 2],
+                    'line-opacity': 0.9
+                }
+            });
 
-        // Muda o cursor ao passar por cima da escola
-        map.on('mouseenter', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = 'pointer'; });
-        map.on('mouseleave', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = ''; });
+            // 4. Pontos das Escolas (Círculo Vermelho)
+            map.addLayer({
+                id: 'rotas-fuga-escolas',
+                type: 'circle',
+                source: 'rotas-fuga',
+                filter: ['==', '$type', 'Point'],
+                layout: { 'visibility': 'none' },
+                paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#ef4444',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#ffffff'
+                }
+            });
+
+            // 5. Popup ao clicar no ponto da escola
+            map.on('click', 'rotas-fuga-escolas', (e) => {
+                const coordinates = e.features[0].geometry.coordinates.slice();
+                // Como no seu JSON a chave do nome ficou vazia (""), vamos tratar isso:
+                const props = e.features[0].properties;
+                const nome = props.nome || props[""] || "Ponto de Apoio";
+                
+                new mapboxgl.Popup()
+                    .setLngLat(coordinates)
+                    .setHTML(`<strong class="text-black">${nome}</strong><br><span class="text-gray-600 text-xs">Ponto de Apoio</span>`)
+                    .addTo(map);
+            });
+
+            map.on('mouseenter', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = 'pointer'; });
+            map.on('mouseleave', 'rotas-fuga-escolas', () => { map.getCanvas().style.cursor = ''; });
         
         // ==========================================
 
@@ -4463,8 +4490,11 @@
             const visibilidade = rotasVisiveis ? 'visible' : 'none';
             const btn = document.getElementById('btnRotasFuga');
 
+            // Liga/Desliga todas as camadas de rotas
             map.setLayoutProperty('rotas-fuga-line', 'visibility', visibilidade);
             map.setLayoutProperty('rotas-fuga-escolas', 'visibility', visibilidade);
+            map.setLayoutProperty('rotas-fuga-polygon', 'visibility', visibilidade);
+            map.setLayoutProperty('rotas-fuga-polygon-outline', 'visibility', visibilidade);
 
             // Feedback visual no botão
             if (rotasVisiveis) {
