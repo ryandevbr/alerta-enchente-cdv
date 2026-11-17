@@ -1062,6 +1062,17 @@
               </button>
             </div>
 
+            <!-- Barra de Progresso do Rio (Mobile) -->
+            <div class="px-3 py-1.5 bg-black/20 border-b border-white/10">
+                <div class="relative w-full h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/10">
+                    <div id="barraRioMobile" class="h-full bg-blue-500 w-0 transition-all duration-500 ease-out"></div>
+                    <!-- Marcadores -->
+                    <div class="absolute top-0 bottom-0 w-0.5 bg-yellow-500 z-10" style="left: 64.2%;"></div>
+                    <div class="absolute top-0 bottom-0 w-0.5 bg-orange-500 z-10" style="left: 77.1%;"></div>
+                    <div class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10" style="left: 88.5%;"></div>
+                </div>
+            </div>
+
             <!-- Linha 2: Cota + Defluência resumida + botão detalhes -->
             <div class="flex items-stretch">
               <!-- Cota atual + horário -->
@@ -1177,6 +1188,21 @@
                     <span class="text-xs text-gray-500">cm</span>
                   </p>
                 </div>
+              </div>
+                            <!-- Barra de Progresso do Rio (Desktop) -->
+              <div class="mt-3">
+                  <div class="flex justify-between text-[9px] text-gray-500 mb-1 leading-none">
+                      <span>0 cm</span>
+                      <span>Cotas de Alerta</span>
+                      <span>700 cm</span>
+                  </div>
+                  <div class="relative w-full h-2 bg-black/50 rounded-full overflow-hidden border border-white/10">
+                      <div id="barraRioDesktop" class="h-full bg-blue-500 w-0 transition-all duration-500 ease-out"></div>
+                      <!-- Marcadores -->
+                      <div class="absolute top-0 bottom-0 w-0.5 bg-yellow-500 z-10" style="left: 64.2%;"></div>
+                      <div class="absolute top-0 bottom-0 w-0.5 bg-orange-500 z-10" style="left: 77.1%;"></div>
+                      <div class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-10" style="left: 88.5%;"></div>
+                  </div>
               </div>
             </div>
 
@@ -1341,12 +1367,12 @@
     </div>
 
     <!-- Botão flutuante: câmera ao vivo -->
-    <!-- <button id="btnCameraAoVivo"
+    <button id="btnCameraAoVivo"
         onclick="abrirCameraAoVivo()"
         class="fixed z-20 glass-panel px-3 py-2 md:px-4 md:py-2.5 rounded-full shadow-2xl border-t border-l border-white/20 flex items-center gap-2 transition-all hover:scale-105 active:scale-95 bottom-40 left-4 md:bottom-auto md:top-3 md:left-[344px] md:right-auto">
     <span id="btnCameraDot" class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
     <span class="text-xs md:text-sm font-bold tracking-wider text-white">CLIQUE AQUI PARA VER O RIO AO VIVO</span>
-    </button> -->
+    </button>
 
           <!-- Botão de Rotas de Fuga -->
             <!-- <button id="btnRotasFuga" onclick="toggleRotasFuga()"
@@ -1813,6 +1839,13 @@
         if (btnCamera) {
           btnCamera.style.display = aba === "mapa" ? "flex" : "none";
         }
+
+        // Esconde o botão de rotas de fuga quando não estiver no mapa
+        const btnRotas = document.getElementById('btnRotasFuga');
+        if (btnRotas) {
+            btnRotas.style.display = (aba === 'mapa') ? 'flex' : 'none';
+        }
+
       }
 
       mapboxgl.accessToken = "CHAVE_MAPBOX_AQUI"; // Insira a sua chave
@@ -2576,6 +2609,28 @@
                 }
             });
 
+            // 5. Nome da Escola (Texto)
+            map.addLayer({
+                id: 'rotas-fuga-escolas-label',
+                type: 'symbol',
+                source: 'rotas-fuga',
+                filter: ['==', '$type', 'Point'],
+                layout: {
+                    'visibility': 'none',
+                    // Tenta pegar a propriedade "nome", se não achar tenta "", se não achar nada, usa "Ponto de Apoio"
+                    'text-field': ['coalesce', ['get', 'nome'], ['get', ''], 'Ponto de Apoio'],
+                    'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+                    'text-size': 12,
+                    'text-offset': [0, -1.5], // Joga o texto um pouco para cima do ponto
+                    'text-anchor': 'bottom'
+                },
+                paint: {
+                    'text-color': '#ffffff',
+                    'text-halo-color': '#0f172a', // Cor do contorno (azul escuro do site)
+                    'text-halo-width': 2
+                }
+            });
+
             // 5. Popup ao clicar no ponto da escola
             map.on('click', 'rotas-fuga-escolas', (e) => {
                 const coordinates = e.features[0].geometry.coordinates.slice();
@@ -2749,6 +2804,33 @@
 
         // Mapa — atualiza cor do rio e mancha
         aplicarNivel(nivel);
+
+        // --- ATUALIZAR BARRAS DE PROGRESSO DO NÍVEL DO RIO ---
+        const maxEscala = 700; 
+        let pctRio = (nivel / maxEscala) * 100;
+        if (pctRio > 100) pctRio = 100;
+        if (pctRio < 0) pctRio = 0;
+
+        let corBarra = 'bg-blue-500';
+        if (nivel >= 620) corBarra = 'bg-red-500';
+        else if (nivel >= 540) corBarra = 'bg-orange-500';
+        else if (nivel >= 450) corBarra = 'bg-yellow-500';
+
+        // Atualiza Mobile
+        const barraMobile = document.getElementById('barraRioMobile');
+        if (barraMobile) {
+            barraMobile.style.width = `${pctRio}%`; // Aplica a largura
+            barraMobile.classList.remove('bg-blue-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500'); // Limpa cores antigas
+            barraMobile.classList.add(corBarra); // Adiciona a cor nova
+        }
+
+        // Atualiza Desktop
+        const barraDesktop = document.getElementById('barraRioDesktop');
+        if (barraDesktop) {
+            barraDesktop.style.width = `${pctRio}%`;
+            barraDesktop.classList.remove('bg-blue-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500');
+            barraDesktop.classList.add(corBarra);
+        }
       }
 
       // 5.4 EVENTOS DO CONTROLE DESLIZANTE
@@ -4490,16 +4572,21 @@
             const visibilidade = rotasVisiveis ? 'visible' : 'none';
             const btn = document.getElementById('btnRotasFuga');
 
-            // Liga/Desliga todas as camadas de rotas
+            // Liga/Desliga todas as camadas
             map.setLayoutProperty('rotas-fuga-line', 'visibility', visibilidade);
             map.setLayoutProperty('rotas-fuga-escolas', 'visibility', visibilidade);
             map.setLayoutProperty('rotas-fuga-polygon', 'visibility', visibilidade);
             map.setLayoutProperty('rotas-fuga-polygon-outline', 'visibility', visibilidade);
+            map.setLayoutProperty('rotas-fuga-escolas-label', 'visibility', visibilidade);
 
             // Feedback visual no botão
             if (rotasVisiveis) {
                 btn.classList.add('bg-green-500/20', 'border-green-500/50');
                 btn.classList.remove('glass-panel');
+                
+                // NOVO: Ativa o GPS automaticamente
+                geolocateControl.trigger(); 
+                
             } else {
                 btn.classList.remove('bg-green-500/20', 'border-green-500/50');
                 btn.classList.add('glass-panel');
