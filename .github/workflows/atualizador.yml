@@ -4,8 +4,8 @@ on:
   schedule:
     # Coleta de dados normal (a cada 15 min)
     - cron: '0,15,30,45 * * * *'
-    # Story automático: 00h, 06h, 12h e 18h (Horário de Brasília = UTC-3)
-    - cron: '0 3,9,15,21 * * *'
+    # Story automático: 06h, 12h e 18h (Horário de Brasília = UTC-3 -> 09h, 15h, 21h UTC)
+    - cron: '0 9,15,21 * * *'
   workflow_dispatch:
     inputs:
       pular_ana:
@@ -169,7 +169,10 @@ jobs:
 
   gerar-story:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.tarefa == 'story' }}
+    # Roda no agendamento automático (apenas no cron de 3h) OU se você mandar "story" manualmente
+    if: |
+      (github.event_name == 'schedule' && github.event.schedule == '0 9,15,21 * * *') ||
+      (github.event_name == 'workflow_dispatch' && inputs.tarefa == 'story')
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
