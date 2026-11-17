@@ -3,8 +3,8 @@ import re
 import subprocess
 import requests
 from datetime import datetime, timezone
-from core.config import configurar_logger
-from core.db import obter_supabase, obter_ultima_leitura_ana, COD_TIMOTEO
+from core.config import configurar_logger, COD_TIMOTEO
+from core.db import obter_supabase, obter_ultima_leitura_ana
 
 log = configurar_logger("historico_visual", formato_data="%H:%M:%S")
 
