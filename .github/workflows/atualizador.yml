@@ -205,7 +205,11 @@ jobs:
           python-version: '3.11'
       
       - name: Instalar FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: |
+    wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+    tar -xf ffmpeg-release-amd64-static.tar.xz
+    sudo cp ffmpeg-*-static/ffmpeg /usr/bin/
+    sudo cp ffmpeg-*-static/ffprobe /usr/bin/
         
       - name: Instalar dependencias
         run: pip install -r requirements.txt
