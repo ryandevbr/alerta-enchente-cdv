@@ -37,7 +37,7 @@ async function atualizarMensagem(
     if (!r.ok) return { ok: false, erro: await r.text() };
     const linhas = await r.json();
     if (!Array.isArray(linhas) || linhas.length === 0) {
-        return { ok: false, erro: "mensagem não encontrada" };
+        return { ok: false, erro: "mensagem nao encontrada" };
     }
     return { ok: true };
 }
@@ -48,7 +48,6 @@ async function atualizarMensagem(
 async function dispararWorkflow(
     tipo: string
 ): Promise<{ ok: boolean; erro?: string }> {
-    // Mudamos para any para aceitar tanto booleanos quanto strings (tarefa)
     let inputs: Record<string, any> = {};
 
     if (tipo === "run_ana") {
@@ -59,8 +58,10 @@ async function dispararWorkflow(
         inputs = { pular_ana: true, pular_cemig: true };
     } else if (tipo === "run_all") {
         inputs = {}; // tudo false, roda tudo
-    } else if (tipo === "trigger_story") {
-        inputs = { tarefa: "story" }; // <-- O pulo do gato para o story
+    } else if (tipo === "trigger_story_imagem") {
+        inputs = { tarefa: "story", tipo_story: "imagem" };
+    } else if (tipo === "trigger_story_video") {
+        inputs = { tarefa: "story", tipo_story: "video" };
     } else {
         return { ok: false, erro: "tipo desconhecido" };
     }
@@ -103,16 +104,18 @@ async function enviarMenu(chatId: number) {
         text: "<b>Painel de controle — Alerta CDV</b>\n\n" +
               "Escolha o que deseja executar:",
         parse_mode: "HTML",
-            reply_markup: {
+        reply_markup: {
             inline_keyboard: [
                 [{ text: "Rodar tudo", callback_data: "run_all" }],
                 [
-                    { text: "Só ANA",   callback_data: "run_ana" },
-                    { text: "Só CEMIG", callback_data: "run_cemig" },
+                    { text: "So ANA",   callback_data: "run_ana" },
+                    { text: "So CEMIG", callback_data: "run_cemig" },
                 ],
-                [{ text: "Só cache", callback_data: "run_cache" }],
-                // Adicione os colchetes [ ] em volta do botão do story
-                [{ text: "Postar Story no Instagram", callback_data: "trigger_story" }]
+                [{ text: "So cache", callback_data: "run_cache" }],
+                [
+                    { text: "Postar Story (Imagem)", callback_data: "trigger_story_imagem" },
+                    { text: "Postar Story (Video)", callback_data: "trigger_story_video" }
+                ]
             ],
         },
     });
@@ -122,7 +125,7 @@ async function enviarMenu(chatId: number) {
 // Handler principal
 
 serve(async (req) => {
-    // Segurança: só aceita requisições do Telegram
+    // Seguranca: so aceita requisicoes do Telegram
     const secret = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
     if (secret !== WEBHOOK_SECRET) {
         return new Response("unauthorized", { status: 401 });
@@ -139,12 +142,11 @@ serve(async (req) => {
             if (["/menu", "/start", "/atualizar"].includes(texto)) {
                 await enviarMenu(chatId);
             }
-            // (outros comandos podem ser adicionados aqui)
 
             return new Response("ok");
         }
 
-        // ---------- Cliques em botões ----------
+        // ---------- Cliques em botoes ----------
         if (!update.callback_query) {
             return new Response("ok");
         }
@@ -152,32 +154,31 @@ serve(async (req) => {
         const cb = update.callback_query;
         const data = cb.data || "";
 
-        // ================= Workflow (botões de trigger) =================
-        // Adicionamos o trigger_story na verificação
-        if (data.startsWith("run_") || data === "trigger_story") {
-            // Feedback imediato ao usuário
+        // ================= Workflow (botoes de trigger) =================
+        if (data.startsWith("run_") || data.startsWith("trigger_story")) {
+            // Feedback imediato ao usuario
             await telegram("answerCallbackQuery", {
                 callback_query_id: cb.id,
-                text: "⏳ Disparando workflow...",
+                text: "Disparando workflow...",
             });
 
-            // Chama a função corretamente (sem hardcode)
             const resultado = await dispararWorkflow(data);
 
             const nomes: Record<string, string> = {
                 run_all:   "Rodar tudo",
-                run_ana:   "Só ANA",
-                run_cemig: "Só CEMIG",
-                run_cache: "Só cache",
-                trigger_story: "Postar Story no Instagram", // Nome para exibir no sucesso
+                run_ana:   "So ANA",
+                run_cemig: "So CEMIG",
+                run_cache: "So cache",
+                trigger_story_imagem: "Postar Story (Imagem)",
+                trigger_story_video: "Postar Story (Video)",
             };
             const acao = nomes[data] || data;
 
             // Substitui a mensagem original pelo resultado
             const textoResultado = resultado.ok
-                ? `✅ <b>Workflow disparado</b>\n\n▶️ ${acao}\n\n` +
+                ? `<b>Workflow disparado</b>\n\nAcao: ${acao}\n\n` +
                   `Acompanhe em: https://github.com/${GITHUB_REPO}/actions`
-                : `❌ <b>Falha ao disparar</b>\n\n▶️ ${acao}\n\n` +
+                : `<b>Falha ao disparar</b>\n\nAcao: ${acao}\n\n` +
                   `Erro: <code>${resultado.erro}</code>`;
 
             await telegram("editMessageText", {
@@ -188,9 +189,16 @@ serve(async (req) => {
                 disable_web_page_preview: true,
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: 'Rodar tudo', callback_data: 'rodar_tudo' }],
-                        [{ text: 'Só ANA', callback_data: 'rodar_ana' }, { text: 'Só CEMIG', callback_data: 'rodar_cemig' }],
-                        [{ text: 'Postar Story no Instagram', callback_data: 'trigger_story' }] // <-- ADICIONE ESTA LINHA
+                        [{ text: "Rodar tudo", callback_data: "run_all" }],
+                        [
+                            { text: "So ANA",   callback_data: "run_ana" },
+                            { text: "So CEMIG", callback_data: "run_cemig" },
+                        ],
+                        [{ text: "So cache", callback_data: "run_cache" }],
+                        [
+                            { text: "Postar Story (Imagem)", callback_data: "trigger_story_imagem" },
+                            { text: "Postar Story (Video)", callback_data: "trigger_story_video" }
+                        ]
                     ]
                 }
             });
@@ -198,7 +206,7 @@ serve(async (req) => {
             return new Response("ok");
         }
 
-        // Botão que reabre o menu
+        // Botao que reabre o menu
         if (data === "menu_reset") {
             await telegram("answerCallbackQuery", {
                 callback_query_id: cb.id,
@@ -211,24 +219,28 @@ serve(async (req) => {
                 parse_mode: "HTML",
                 reply_markup: {
                     inline_keyboard: [
-                        [{ text: "▶️ Rodar tudo", callback_data: "run_all" }],
+                        [{ text: "Rodar tudo", callback_data: "run_all" }],
                         [
-                            { text: "Só ANA",   callback_data: "run_ana" },
-                            { text: "Só CEMIG", callback_data: "run_cemig" },
+                            { text: "So ANA",   callback_data: "run_ana" },
+                            { text: "So CEMIG", callback_data: "run_cemig" },
                         ],
-                        [{ text: "Só cache", callback_data: "run_cache" }],
+                        [{ text: "So cache", callback_data: "run_cache" }],
+                        [
+                            { text: "Postar Story (Imagem)", callback_data: "trigger_story_imagem" },
+                            { text: "Postar Story (Video)", callback_data: "trigger_story_video" }
+                        ]
                     ],
                 },
             });
             return new Response("ok");
         }
 
-        // ================= Moderação (comportamento existente) =================
+        // ================= Moderacao (comportamento existente) =================
         const [acao, idStr] = data.split(":");
         const msgId = parseInt(idStr, 10);
 
         if (!msgId || isNaN(msgId)) {
-            return new Response("callback inválido", { status: 400 });
+            return new Response("callback invalido", { status: 400 });
         }
 
         let patch: Record<string, unknown> = {};
@@ -238,21 +250,21 @@ serve(async (req) => {
         switch (acao) {
             case "aprovar":
                 patch = { status: "aprovado" };
-                resposta = "✅ Aprovada";
-                sufixoMsg = `\n\n✅ <b>Aprovada</b> por ${cb.from.first_name}`;
+                resposta = "Aprovada";
+                sufixoMsg = `\n\n<b>Aprovada</b> por ${cb.from.first_name}`;
                 break;
             case "rejeitar":
                 patch = { status: "rejeitado" };
-                resposta = "❌ Rejeitada";
-                sufixoMsg = `\n\n❌ <b>Rejeitada</b> por ${cb.from.first_name}`;
+                resposta = "Rejeitada";
+                sufixoMsg = `\n\n<b>Rejeitada</b> por ${cb.from.first_name}`;
                 break;
             case "limpar":
                 patch = { reportado: false, reportado_count: 0 };
-                resposta = "Denúncias limpas";
-                sufixoMsg = `\n\n<b>Denúncias limpas</b> por ${cb.from.first_name}`;
+                resposta = "Denuncias limpas";
+                sufixoMsg = `\n\n<b>Denuncias limpas</b> por ${cb.from.first_name}`;
                 break;
             default:
-                return new Response("ação desconhecida", { status: 400 });
+                return new Response("acao desconhecida", { status: 400 });
         }
 
         const res = await atualizarMensagem(msgId, patch);
@@ -260,7 +272,7 @@ serve(async (req) => {
         if (!res.ok) {
             await telegram("answerCallbackQuery", {
                 callback_query_id: cb.id,
-                text: `❌ Erro: ${res.erro}`,
+                text: `Erro: ${res.erro}`,
                 show_alert: true,
             });
             return new Response("erro", { status: 500 });
