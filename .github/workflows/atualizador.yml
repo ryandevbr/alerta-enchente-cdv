@@ -133,7 +133,6 @@ jobs:
   capturar-historico:
     needs: [atualizar-cache]
     runs-on: ubuntu-latest
-    # Roda no agendamento automático ou quando você mandar rodar o "completo"
     if: ${{ !cancelled() && (github.event_name == 'schedule' || inputs.tarefa == 'completo') }}
     steps:
       - uses: actions/checkout@v4
@@ -144,8 +143,9 @@ jobs:
       - name: Instalar dependencias
         run: pip install -r requirements.txt
         
+      # --- CORREÇÃO AQUI: Usando a Action oficial ultra-rápida ---
       - name: Instalar FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        uses: FedericoCarboni/setup-ffmpeg@v3
         
       - name: Capturar Frame Histórico
         env:
@@ -194,7 +194,6 @@ jobs:
 
   gerar-story:
     runs-on: ubuntu-latest
-    # Roda no agendamento automático (apenas no cron de 3h) OU se você mandar "story" manualmente
     if: |
       (github.event_name == 'schedule' && github.event.schedule == '0 9,15,21 * * *') ||
       (github.event_name == 'workflow_dispatch' && inputs.tarefa == 'story')
@@ -204,12 +203,9 @@ jobs:
         with:
           python-version: '3.11'
       
+      # --- CORREÇÃO AQUI: Usando a Action oficial ultra-rápida ---
       - name: Instalar FFmpeg
-        run: |
-    wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-    tar -xf ffmpeg-release-amd64-static.tar.xz
-    sudo cp ffmpeg-*-static/ffmpeg /usr/bin/
-    sudo cp ffmpeg-*-static/ffprobe /usr/bin/
+        uses: FedericoCarboni/setup-ffmpeg@v3
         
       - name: Instalar dependencias
         run: pip install -r requirements.txt
