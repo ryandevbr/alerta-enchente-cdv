@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import sys
 import subprocess
 import requests
 from datetime import datetime, timezone
@@ -11,13 +12,10 @@ from core.db import obter_supabase
 
 log = configurar_logger("story", formato_data="%H:%M:%S")
 
-# --- ARQUIVOS DE FONTE ---
 FONTE_BOLD = "assets/OpenSans-Bold.ttf"
 FONTE_REGULAR = "assets/OpenSans-Regular.ttf"
 
-# =========================================================
-# COORDENADAS (X, Y) - VALIDADAS
-# =========================================================
+# Coordenadas (validadas)
 POS_NIVEL = (540, 950)       
 POS_HOJE = (450, 1255)       
 POS_ANO1 = (750, 1255)       
@@ -77,7 +75,7 @@ def gerar_overlay(nivel, defluencia, anos):
     agora = datetime.now(ZoneInfo("America/Sao_Paulo"))
     draw.text(POS_DATA_HORA, agora.strftime("%d/%m/%Y às %H:%M"), font=font_data, fill="#cbd5e1", anchor="mm")
 
-    img.save("overlay_temp.png")
+    return img
 
 def baixar_ultimo_video():
     """Baixa o penúltimo vídeo da pasta de clipes do VPS para garantir que está completo."""
@@ -85,19 +83,11 @@ def baixar_ultimo_video():
     try:
         r = requests.get(url_listagem, timeout=10)
         r.raise_for_status()
-        
-        # Encontra todos os links .mp4 na página
         arquivos = re.findall(r'href="([^"]+\.mp4)"', r.text)
-        if len(arquivos) < 2:
-            log.error("Não há vídeos suficientes na pasta do VPS.")
-            return False
-            
-        # Ordena e pega o penúltimo (o último pode estar sendo gravado agora)
+        if len(arquivos) < 2: return False
         arquivo_alvo = sorted(arquivos)[-2]
-        url_download = url_listagem + arquivo_alvo
         
-        log.info(f"Baixando vídeo: {arquivo_alvo}")
-        r_video = requests.get(url_download, stream=True)
+        r_video = requests.get(url_listagem + arquivo_alvo, stream=True)
         with open("video_temp.mp4", "wb") as f:
             for chunk in r_video.iter_content(chunk_size=8192):
                 f.write(chunk)
@@ -106,53 +96,69 @@ def baixar_ultimo_video():
         log.error(f"Erro ao baixar vídeo: {e}")
         return False
 
-def gerar_video_final(supabase):
+def publicar(modo="video"):
+    supabase = obter_supabase()
     nivel, defluencia, anos = obter_dados(supabase)
     if nivel is None: return
 
-    log.info("1. Gerando overlay transparente...")
-    gerar_overlay(nivel, defluencia, anos)
+    img_overlay = gerar_overlay(nivel, defluencia, anos)
 
-    log.info("2. Baixando clipe do VPS...")
-    if not baixar_ultimo_video():
-        return
-
-    log.info("3. Processando vídeo com FFmpeg...")
-    # Comando FFmpeg: Pega o vídeo, escala para 1080 de largura, coloca no topo de uma tela 1080x1920 e sobrepõe o PNG
-    comando = [
-        "ffmpeg", "-y", "-i", "video_temp.mp4", "-i", "overlay_temp.png",
-        "-filter_complex", "[0:v]scale=1080:-2,pad=1080:1920:0:0:color=black[vid];[vid][1:v]overlay=0:0",
-        "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-an", "story_final.mp4"
-    ]
-    subprocess.run(comando, check=True)
-
-    log.info("4. Enviando para o Supabase...")
-    with open("story_final.mp4", "rb") as f:
+    if modo == "imagem":
+        log.info("Gerando Story em formato de IMAGEM...")
+        img_byte_arr = io.BytesIO()
+        img_overlay.convert("RGB").save(img_byte_arr, format='JPEG', quality=95)
+        img_byte_arr.seek(0)
+        
+        nome_arquivo = "story_estatico.jpg"
         supabase.storage.from_("stories").upload(
-            file=f.read(), path="story_video.mp4",
-            file_options={"content-type": "video/mp4", "upsert": "true"}
+            file=img_byte_arr.read(), path=nome_arquivo,
+            file_options={"content-type": "image/jpeg", "upsert": "true"}
         )
-    
-    url_base = supabase.storage.from_("stories").get_public_url("story_video.mp4")
-    ts = int(datetime.now().timestamp())
-    url_final = f"{url_base}?t={ts}" # <-- Adiciona o cache buster
-    
+        url_final = supabase.storage.from_("stories").get_public_url(nome_arquivo)
+        msg_telegram = "✅ Story (Imagem) gerado e pronto para postar!"
+        
+    else:
+        log.info("Gerando Story em formato de VÍDEO...")
+        img_overlay.save("overlay_temp.png")
+        
+        if not baixar_ultimo_video():
+            log.error("Falha ao baixar vídeo do VPS. Abortando.")
+            return
+
+        comando = [
+            "ffmpeg", "-y", "-i", "video_temp.mp4", "-i", "overlay_temp.png",
+            "-filter_complex", "[0:v]scale=1080:-2,pad=1080:1920:0:0:color=black[vid];[vid][1:v]overlay=0:0",
+            "-c:v", "libx264", "-preset", "fast", "-crf", "23", "-an", "story_final.mp4"
+        ]
+        subprocess.run(comando, check=True)
+
+        with open("story_final.mp4", "rb") as f:
+            nome_arquivo = "story_video.mp4"
+            supabase.storage.from_("stories").upload(
+                file=f.read(), path=nome_arquivo,
+                file_options={"content-type": "video/mp4", "upsert": "true"}
+            )
+        url_final = supabase.storage.from_("stories").get_public_url(nome_arquivo)
+        msg_telegram = "✅ Story (Vídeo) gerado e pronto para postar!"
+
+    # Salva no banco
     supabase.table("cache_site").upsert({
         "chave": "story_atual",
-        "dados": {"url": url_final, "gerado_at": datetime.now(timezone.utc).isoformat(), "tipo": "video"},
+        "dados": {"url": url_final, "gerado_em": datetime.now(timezone.utc).isoformat(), "tipo": modo},
         "atualizado_em": datetime.now(timezone.utc).isoformat()
     }, on_conflict="chave").execute()
 
-    log.info(f"✅ Vídeo gerado com sucesso! URL: {url_final}")
+    log.info(f"✅ Concluído! URL: {url_final}")
 
     # Avisa o Telegram
     TOKEN = os.getenv("TELEGRAM_TOKEN")
     CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
     if TOKEN and CHAT_ID:
         requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={
-            "chat_id": CHAT_ID, "text": "✅ Story em vídeo gerado e pronto para postar!"
+            "chat_id": CHAT_ID, "text": msg_telegram
         })
 
 if __name__ == "__main__":
-    supabase = obter_supabase()
-    gerar_video_final(supabase)
+    # Verifica se passou o argumento. Se não, assume 'video'
+    modo_escolhido = sys.argv[1] if len(sys.argv) > 1 else "video"
+    publicar(modo_escolhido)
