@@ -217,4 +217,4 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python gerar_story.py
+        run: python gerar_story.py ${{ inputs.tipo_story }}
