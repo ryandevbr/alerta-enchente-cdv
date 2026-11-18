@@ -29,6 +29,15 @@ on:
           - completo
           - story
 
+tipo_story:
+  description: 'Formato do Story'
+  required: false
+  default: 'video'
+  type: choice
+  options:
+    - video
+    - imagem
+
 concurrency:
   group: atualizador-cdv
   cancel-in-progress: false
