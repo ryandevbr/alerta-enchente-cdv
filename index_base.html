@@ -1076,18 +1076,16 @@
             <!-- Linha 2: Cota + Defluência resumida + botão detalhes -->
             <div class="flex items-stretch">
               <!-- Cota atual + horário -->
-              <div
-                class="flex flex-col justify-center px-3 py-2 flex-1 min-w-0"
-              >
-                <span class="text-[9px] text-blue-400 font-medium leading-none">
-                  AGORA <span id="horaDisplayMobile"></span>
-                </span>
-                <span
-                  class="text-base font-light text-white leading-none mt-0.5"
-                >
-                  <span id="nivelDisplayMobile">80</span
-                  ><span class="text-[10px] text-gray-500 ml-0.5">cm</span>
-                </span>
+              <div class="flex flex-col justify-center px-3 py-2 flex-1 min-w-0">
+                  <span class="text-[9px] text-blue-400 font-medium leading-none mb-1">
+                      AGORA <span id="horaDisplayMobile"></span>
+                  </span>
+                  <div class="flex items-baseline gap-1.5 leading-none">
+                      <span class="text-[11px] text-white-400 tracking-wide uppercase">Nível atual do rio:</span>
+                      <span class="text-base font-medium text-white">
+                          <span id="nivelDisplayMobile">80</span><span class="text-[10px] text-white-400 ml-0.5 font-light">cm</span>
+                      </span>
+                  </div>
               </div>
 
               <!-- Botão "ver detalhes" com rótulo explícito -->
@@ -1181,7 +1179,7 @@
                   <p
                     class="text-[10px] text-gray-500 uppercase tracking-wider leading-none mb-1"
                   >
-                    Cota
+                    Nível do Rio
                   </p>
                   <p class="text-xl font-light text-white leading-none">
                     <span id="nivelDisplay">80</span>
