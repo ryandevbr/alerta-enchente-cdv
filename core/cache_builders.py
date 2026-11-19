@@ -120,7 +120,7 @@ def construir_onda_desfasada(
 
     except Exception as exc:
         log.error("Erro ao calcular projeção da CEMIG: %s", exc)
-        return None
+        return None     
 
 
 def _buscar_nivel_ano_anterior(
