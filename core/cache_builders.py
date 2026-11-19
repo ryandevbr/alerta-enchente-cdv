@@ -66,21 +66,20 @@ def construir_onda_desfasada(
     client: Optional[Client] = None,
 ) -> Optional[dict[int, float]]:
     """
-    Monta a projeção do nível do rio em Timóteo para as próximas 3 horas,
-    baseada na tendência da defluência da barragem CEMIG nas últimas 12 horas.
+    Monta a projeção do nível do rio para as próximas 3 horas,
+    considerando a abertura da barragem E a chuva recente.
     """
     if nivel_timoteo_atual is None:
-        log.warning("Nível de Timóteo indisponível. Projeção não calculada.")
         return None
 
     db = client or obter_supabase()
 
     try:
-        # Pega as leituras das últimas 12 horas da CEMIG
+        # 1. Fator Barragem (últimas 12h)
         agora = datetime.now(timezone.utc)
         doze_horas_atras = agora - timedelta(hours=12)
         
-        resp = (
+        resp_cemig = (
             db.table("historico_cemig")
             .select("defluencia_m3s")
             .not_.is_("defluencia_m3s", "null")
@@ -89,41 +88,46 @@ def construir_onda_desfasada(
             .execute()
         )
 
-        if not resp.data or len(resp.data) < 2:
-            log.warning("Sem dados suficientes da CEMIG para calcular tendência.")
-            return {
-                1: round(nivel_timoteo_atual, 1), 
-                2: round(nivel_timoteo_atual, 1), 
-                3: round(nivel_timoteo_atual, 1)
-            }
+        if not resp_cemig.data or len(resp_cemig.data) < 2:
+            return {1: nivel_timoteo_atual, 2: nivel_timoteo_atual, 3: nivel_timoteo_atual}
 
-        # O valor atual é o mais recente. A referência é o MAIOR valor das últimas 12h.
-        vazao_atual = float(resp.data[0]["defluencia_m3s"])
-        vazao_pico = max(float(item["defluencia_m3s"]) for item in resp.data)
-        
+        vazao_atual = float(resp_cemig.data[0]["defluencia_m3s"])
+        vazao_pico = max(float(item["defluencia_m3s"]) for item in resp_cemig.data)
         delta_vazao = vazao_atual - vazao_pico
-        FATOR_IMPACTO = 0.555
+        impacto_barragem = delta_vazao * 0.555
 
-        impacto_total_estimado = delta_vazao * FATOR_IMPACTO
+        # 2. Fator Chuva (últimas 3h)
+        tres_horas_atras = agora - timedelta(hours=3)
+        resp_chuva = (
+            db.table("historico_ana")
+            .select("chuva_mm")
+            .eq("codigo_ana", COD_TIMOTEO)
+            .gte("data_hora", tres_horas_atras.isoformat())
+            .execute()
+        )
         
-        # Distribui o impacto nas 3 horas
+        chuva_3h = sum(float(item["chuva_mm"]) for item in resp_chuva.data if item.get("chuva_mm")) if resp_chuva.data else 0.0
+        
+        # Se a barragem fechou, mas choveu muito, o rio ainda pode subir.
+        # Bônus de 15cm para cada 10mm de chuva.
+        impacto_chuva = (chuva_3h / 10.0) * 15.0 if chuva_3h > 2.0 else 0.0
+
+        impacto_total = impacto_barragem + impacto_chuva
+        
         onda = {
-            1: round(nivel_timoteo_atual + (impacto_total_estimado * (1/3)), 1),
-            2: round(nivel_timoteo_atual + (impacto_total_estimado * (2/3)), 1),
-            3: round(nivel_timoteo_atual + impacto_total_estimado, 1)
+            1: round(nivel_timoteo_atual + (impacto_total * (1/3)), 1),
+            2: round(nivel_timoteo_atual + (impacto_total * (2/3)), 1),
+            3: round(nivel_timoteo_atual + impacto_total, 1)
         }
         
-        for h in onda:
-            if onda[h] < 0: onda[h] = 0.0
-
         log.info(
-            "Projeção CEMIG: Atual %.1f m³/s | Pico 12h %.1f m³/s | Impacto = %+.1f cm", 
-            vazao_atual, vazao_pico, impacto_total_estimado
+            "Proj: Barragem %+.1f cm | Chuva(%.1fmm) %+.1f cm | Total %+.1f cm", 
+            impacto_barragem, chuva_3h, impacto_chuva, impacto_total
         )
         return onda
 
     except Exception as exc:
-        log.error("Erro ao calcular projeção da CEMIG: %s", exc)
+        log.error("Erro ao calcular projeção: %s", exc)
         return None
 
 
