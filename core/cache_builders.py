@@ -76,7 +76,6 @@ def construir_onda_desfasada(
     db = client or obter_supabase()
 
     try:
-        # Pega as leituras das últimas 12 horas da CEMIG
         agora = datetime.now(timezone.utc)
         doze_horas_atras = agora - timedelta(hours=12)
         
@@ -90,14 +89,12 @@ def construir_onda_desfasada(
         )
 
         if not resp.data or len(resp.data) < 2:
-            log.warning("Sem dados suficientes da CEMIG para calcular tendência.")
             return {
                 1: round(nivel_timoteo_atual, 1), 
                 2: round(nivel_timoteo_atual, 1), 
                 3: round(nivel_timoteo_atual, 1)
             }
 
-        # O valor atual é o mais recente. A referência é o MAIOR valor das últimas 12h.
         vazao_atual = float(resp.data[0]["defluencia_m3s"])
         vazao_pico = max(float(item["defluencia_m3s"]) for item in resp.data)
         
@@ -106,7 +103,6 @@ def construir_onda_desfasada(
 
         impacto_total_estimado = delta_vazao * FATOR_IMPACTO
         
-        # Distribui o impacto nas 3 horas
         onda = {
             1: round(nivel_timoteo_atual + (impacto_total_estimado * (1/3)), 1),
             2: round(nivel_timoteo_atual + (impacto_total_estimado * (2/3)), 1),
