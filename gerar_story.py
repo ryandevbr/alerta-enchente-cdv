@@ -251,7 +251,7 @@ def executar_teste():
     print("\nAbra os arquivos 'teste_layout_imagem.jpg' e 'teste_layout_video.jpg' para verificar os alinhamentos!")
 
 if __name__ == "__main__":
-    MODO_TESTE = True 
+    MODO_TESTE = False 
     
     if MODO_TESTE:
         executar_teste()
