@@ -138,8 +138,14 @@ def gerar_overlay(nivel, defluencia, anos, tendencia, modo="video"):
     anos_alvo = obter_anos_comparacao()
     for i, pos in enumerate([pos_ano1, pos_ano2, pos_ano3]):
         ano = anos_alvo[i]
-        valor = anos.get(ano, 0)
-        draw.text(pos, f"{ano}: {valor:.0f}cm", font=font_anos, fill="white", anchor="mm")
+        valor = anos.get(ano) # Pega o valor, se não existir, retorna None
+        
+        if valor is not None:
+            texto_ano = f"{ano}: {valor:.0f}cm"
+        else:
+            texto_ano = f"{ano}: --" # Se não tem dado, mostra tracinhos
+            
+        draw.text(pos, texto_ano, font=font_anos, fill="white", anchor="mm")
 
     # 4. Defluência e Data
     texto_def = f"Defluencia: {defluencia:.0f} m3/s" if defluencia > 0 else "Defluencia: --"
