@@ -99,9 +99,18 @@ def construir_onda_desfasada(
         vazao_pico = max(float(item["defluencia_m3s"]) for item in resp.data)
         
         delta_vazao = vazao_atual - vazao_pico
-        FATOR_IMPACTO = 0.555
+        
+        # Trava de segurança: Sá Carvalho raramente varia mais de 600 m3/s
+        if delta_vazao > 600: delta_vazao = 600
+        if delta_vazao < -600: delta_vazao = -600
+
+        FATOR_IMPACTO = 0.555 # 55.5 cm para cada 100 m³/s
 
         impacto_total_estimado = delta_vazao * FATOR_IMPACTO
+        
+        # Trava de segurança 2: O rio não sobe/desce 3 metros em 3h
+        if impacto_total_estimado > 300: impacto_total_estimado = 300
+        if impacto_total_estimado < -300: impacto_total_estimado = -300
         
         onda = {
             1: round(nivel_timoteo_atual + (impacto_total_estimado * (1/3)), 1),
