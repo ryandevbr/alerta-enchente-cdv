@@ -66,11 +66,11 @@ def construir_onda_desfasada(
     client: Optional[Client] = None,
 ) -> Optional[dict[int, float]]:
     """
-    Monta a projeção do nível do rio em Timóteo para as próximas 3 horas,
-    baseada na tendência da defluência da barragem CEMIG nas últimas 12 horas.
+    Monta a projeção do nível do rio em Timóteo para as próximas 3 horas.
+    Inclui um 'Freio de Segurança': se a CEMIG prever queda, mas o rio estiver
+    subindo ou houver instabilidade, a projeção é travada para evitar falsos negativos.
     """
     if nivel_timoteo_atual is None:
-        log.warning("Nível de Timóteo indisponível. Projeção não calculada.")
         return None
 
     db = client or obter_supabase()
@@ -79,7 +79,8 @@ def construir_onda_desfasada(
         agora = datetime.now(timezone.utc)
         doze_horas_atras = agora - timedelta(hours=12)
         
-        resp = (
+        # 1. Pega os dados da CEMIG (últimas 12h)
+        resp_cemig = (
             db.table("historico_cemig")
             .select("defluencia_m3s")
             .not_.is_("defluencia_m3s", "null")
@@ -88,30 +89,40 @@ def construir_onda_desfasada(
             .execute()
         )
 
-        if not resp.data or len(resp.data) < 2:
-            return {
-                1: round(nivel_timoteo_atual, 1), 
-                2: round(nivel_timoteo_atual, 1), 
-                3: round(nivel_timoteo_atual, 1)
-            }
+        # 2. Pega os dados da ANA (nível das últimas 6h para ver a tendência real)
+        resp_ana = (
+            db.table("historico_ana")
+            .select("nivel_cm")
+            .eq("codigo_ana", COD_TIMOTEO)
+            .not_.is_("nivel_cm", "null")
+            .gte("data_hora", (agora - timedelta(hours=6)).isoformat())
+            .order("data_hora", desc=True)
+            .execute()
+        )
 
-        vazao_atual = float(resp.data[0]["defluencia_m3s"])
-        vazao_pico = max(float(item["defluencia_m3s"]) for item in resp.data)
-        
+        if not resp_cemig.data or len(resp_cemig.data) < 2:
+            return {1: round(nivel_timoteo_atual, 1), 2: round(nivel_timoteo_atual, 1), 3: round(nivel_timoteo_atual, 1)}
+
+        vazao_atual = float(resp_cemig.data[0]["defluencia_m3s"])
+        vazao_pico = max(float(item["defluencia_m3s"]) for item in resp_cemig.data)
         delta_vazao = vazao_atual - vazao_pico
-        
-        # Trava de segurança: Sá Carvalho raramente varia mais de 600 m3/s
-        if delta_vazao > 600: delta_vazao = 600
-        if delta_vazao < -600: delta_vazao = -600
-
-        FATOR_IMPACTO = 0.555 # 55.5 cm para cada 100 m³/s
+        FATOR_IMPACTO = 0.555
 
         impacto_total_estimado = delta_vazao * FATOR_IMPACTO
-        
-        # Trava de segurança 2: O rio não sobe/desce 3 metros em 3h
-        if impacto_total_estimado > 300: impacto_total_estimado = 300
-        if impacto_total_estimado < -300: impacto_total_estimado = -300
-        
+
+        # --- FREIO DE SEGURANÇA ---
+        # Se a CEMIG previu queda, mas o rio subiu nas últimas 6h, algo está errado (chuva!)
+        freio_ativado = False
+        if impacto_total_estimado < 0 and resp_ana.data and len(resp_ana.data) >= 2:
+            nivel_recente = float(resp_ana.data[0]["nivel_cm"])
+            nivel_6h_atras = float(resp_ana.data[-1]["nivel_cm"])
+            
+            # Se o rio subiu mais de 10cm nas últimas 6h, ignoramos a previsão de queda
+            if (nivel_recente - nivel_6h_atras) > 10:
+                freio_ativado = True
+                log.warning(f"Freio de Segurança ativado! CEMIG previu queda, mas o rio subiu {(nivel_recente - nivel_6h_atras):.1f}cm nas últimas 6h. Provável chuva.")
+                impacto_total_estimado = 0.0 # Trava a projeção (rio fica estável)
+
         onda = {
             1: round(nivel_timoteo_atual + (impacto_total_estimado * (1/3)), 1),
             2: round(nivel_timoteo_atual + (impacto_total_estimado * (2/3)), 1),
@@ -121,15 +132,14 @@ def construir_onda_desfasada(
         for h in onda:
             if onda[h] < 0: onda[h] = 0.0
 
-        log.info(
-            "Projeção CEMIG: Atual %.1f m³/s | Pico 12h %.1f m³/s | Impacto = %+.1f cm", 
-            vazao_atual, vazao_pico, impacto_total_estimado
-        )
+        status_log = "Queda Travada pelo Freio" if freio_ativado else f"Impacto {impacto_total_estimado:+.1f} cm"
+        log.info(f"Projeção CEMIG: {status_log} | Vazão atual: {vazao_atual:.1f} m³/s")
+        
         return onda
 
     except Exception as exc:
         log.error("Erro ao calcular projeção da CEMIG: %s", exc)
-        return None     
+        return None  
 
 
 def _buscar_nivel_ano_anterior(
