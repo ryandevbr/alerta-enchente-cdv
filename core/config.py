@@ -18,7 +18,6 @@ sentry_sdk.init(
     dsn="https://87c598266ec2374472a087494147fe62@o4512431709159424.ingest.us.sentry.io/4512431766044672",
     traces_sample_rate=0.5, # 0.5 significa 50% das transações (economiza cota)
     profile_session_sample_rate=0.5,
-    send_default_pii=False, # LGPD: não envia dados pessoais (IP, etc)
 )
 
 # Timezone oficial do Brasil (a ANA e a CEMIG publicam horários em Brasília)
