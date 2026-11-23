@@ -145,7 +145,7 @@ jobs:
         
       # --- CORREÇÃO AQUI: Usando a Action oficial ultra-rápida ---
       - name: Instalar FFmpeg
-        uses: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
         
       - name: Capturar Frame Histórico
         env:
@@ -194,18 +194,15 @@ jobs:
 
   gerar-story:
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'schedule' && github.event.schedule == '0 9,15,21 * * *') ||
-      (github.event_name == 'workflow_dispatch' && inputs.tarefa == 'story')
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.tarefa == 'story' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       
-      # --- CORREÇÃO AQUI: Usando a Action oficial ultra-rápida ---
       - name: Instalar FFmpeg
-        uses: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
         
       - name: Instalar dependencias
         run: pip install -r requirements.txt
